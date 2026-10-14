@@ -16,15 +16,18 @@ const Homey = require('homey');
 // Homey sets onoff and dim in the same breath when the slider is dragged on a
 // dark group. Long enough to catch both, short enough not to feel laggy.
 const DIM_DEBOUNCE_MS = 250;
-// When Homey commands a whole room, the dimmers' own listeners fire within a
-// few milliseconds of the group's. Letting them go first means the group can
-// see that a dimmer is already sending this level and leave it alone.
+// Siri and the room slider send "on" and the level as two changes up to about
+// 0.8 s apart. "On" without a level waits this long for one; see SGDeviceBase.
+const ON_WAIT_MS = 800;
+// When Homey commands a whole room, the dimmers' own listeners fire close to
+// the group's. Whichever request for the same level comes second finds the
+// first still being sent, and the dimmer skips it.
 const FAN_OUT_DELAY_MS = 100;
 const MEMBER_DRIVER = 'sg_mesh';
 
 class SGGroupDevice extends Homey.Device {
   _infoLog(...args) {
-    if (this.homey.settings.get('loggingEnabled') !== false) super.log(...args);
+    super.log(...args);
   }
 
   async onInit() {
@@ -47,14 +50,35 @@ class SGGroupDevice extends Homey.Device {
     // once, and two separate listeners would race to send conflicting levels
     // for the same gesture. One listener turns each gesture into one level.
     this.registerMultipleCapabilityListener(['onoff', 'dim'], async (values) => {
+      const now = Date.now();
+      const gap = this._capabilitiesAt ? ` (+${now - this._capabilitiesAt}ms)` : '';
+      this._capabilitiesAt = now;
+      this._infoLog(`capability in: ${Object.entries(values).map(([k, v]) => `${k}=${v}`).join(' ')}${gap}`);
+
       // The power button alone means "back on, as it was": each dimmer returns
       // to its own level. Any gesture with a level sets that level on all.
-      this._restore = values.onoff === true && typeof values.dim !== 'number';
+      const restore = values.onoff === true && typeof values.dim !== 'number';
       const pct = this._levelFor(values);
+      // Decided before the await below, so a level that comes in meanwhile
+      // always replaces a held "on".
+      if (this._onWaitTimer) {
+        this.homey.clearTimeout(this._onWaitTimer);
+        this._onWaitTimer = null;
+      }
+      if (restore) {
+        // A level that follows within ON_WAIT_MS replaces this "on".
+        this._onWaitTimer = this.homey.setTimeout(() => {
+          this._onWaitTimer = null;
+          this._restore = true;
+          this._request(pct);
+        }, ON_WAIT_MS);
+      } else {
+        this._restore = false;
+        this._request(pct);
+      }
       // The Homey app reads the tile back when this listener answers and then
       // ignores updates for a moment, so both values must be stored by then.
       await this._show(pct, true);
-      this._request(pct);
     }, DIM_DEBOUNCE_MS);
 
     this._infoLog('group ready');
@@ -155,9 +179,8 @@ class SGGroupDevice extends Homey.Device {
       }
       const level = restore ? this._restoreLevel(member) : pct;
       this._levels.set(member.getMeshId(), level);
-      // Already sending exactly this, from its own tile or the room: a second
-      // request would only put the same packet on the air twice.
-      if (member._busy && member._target === null && member._lastAppliedLevel === level) continue;
+      // A level the dimmer is already sending, or has just delivered, is
+      // skipped (and logged) by the dimmer itself.
       // A level set from the group is the level the dimmer comes back to.
       if (!restore && level > 0) member._lastDim = level / 100;
       member._request(level);
@@ -170,15 +193,22 @@ class SGGroupDevice extends Homey.Device {
 
   async onDeleted() {
     if (this._fanOutTimer) this.homey.clearTimeout(this._fanOutTimer);
+    if (this._onWaitTimer) this.homey.clearTimeout(this._onWaitTimer);
   }
 
   // Called by the app for every status frame heard on the mesh. The group is
   // on while any member is, and shows the brightest member's level.
   applyMeshStatus(idHex, level) {
     const id = parseInt(idHex, 16);
-    if (!this._members().some((member) => member.getMeshId() === id)) return;
+    const member = this._members().find((dimmer) => dimmer.getMeshId() === id);
+    if (!member) return;
 
-    this._levels.set(id, Math.max(0, Math.min(100, Math.round(level))));
+    // The dimmer has already decided what it shows (fade and rounding
+    // ignored); the group follows that.
+    const shown = typeof member._lastAppliedLevel === 'number' ? member._lastAppliedLevel : level;
+    this._levels.set(id, Math.max(0, Math.min(100, Math.round(shown))));
+    // A gesture is still on its way to the dimmers; the tile already shows it.
+    if (this._onWaitTimer || this._fanOutTimer) return;
     const pct = Math.max(0, ...this._levels.values());
     this._remember(pct);
     this._show(pct);

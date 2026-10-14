@@ -11,34 +11,13 @@
     }
   },
   "settings": {
-    "title": "SG LEDDim",
-    "status": {
-      "title": "Status",
-      "interval": "Statusintervall",
-      "help": "Statuspoll leser nivået på dimmerne over Bluetooth. Uten den viser Homey bare det appen selv har sendt — endringer fra veggbryteren fanges ikke opp. Polling gjør samtidig styringen tregere, så velg heller et langt intervall enn et kort. Blir appen treg eller upålitelig, skru den av.",
-      "off": "Av",
-      "30s": "30 sekunder",
-      "60s": "60 sekunder",
-      "2m": "2 minutter",
-      "5m": "5 minutter"
+    "keepConnected": {
+      "label": "Hold dimmerne tilkoblet",
+      "hint": "Raskere tilkobling. Stenger ute SG-appen hvis du bare har én dimmer."
     },
-    "logging": {
-      "title": "Logging",
-      "info": "Informasjonslogging",
-      "infoHint": "Kommandoer og statusoppdateringer i app-loggen. Feil logges alltid.",
-      "debug": "Detaljert Bluetooth-logging",
-      "debugHint": "Full BLE- og GATT-sporing. Slå bare på ved feilsøking; det gir svært mye logg."
-    },
-    "save": "Lagre",
-    "saved": "Lagret",
-    "keepAlive": {
-      "title": "Hold tilkoblingen åpen",
-      "label": "Etter en kommando",
-      "off": "Av",
-      "30s": "30 sekunder",
-      "60s": "60 sekunder",
-      "help": "Eksperimentelt. Vanligvis kobler appen til for hver kommando, og det tar noen sekunder. Med dette på holder den tilkoblingen en kort stund etter en kommando, så de neste går raskt. Homey har én Bluetooth-radio: mens tilkoblingen holdes, kan andre Bluetooth-apper på denne Homey-en og SG-appen på mobilen få problemer med å nå enhetene sine, og statuspollingen venter. Velg den korteste tiden som føles rask nok.",
-      "15s": "15 sekunder"
+    "troubleshooting": {
+      "title": "Feilsøking",
+      "debug": "Detaljert logging"
     }
   }
 }

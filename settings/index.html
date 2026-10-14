@@ -5,60 +5,26 @@
   <script type="text/javascript" src="/homey.js" data-origin="settings"></script>
 </head>
 <body>
-  <h1 data-i18n="settings.title">SG LEDDim</h1>
-
   <fieldset>
-    <legend data-i18n="settings.status.title">Status</legend>
     <div class="field row">
-      <label for="statusPollMs" data-i18n="settings.status.interval">Status interval</label>
-      <select id="statusPollMs">
-        <option value="0" data-i18n="settings.status.off">Off</option>
-        <option value="30000" data-i18n="settings.status.30s">30 seconds</option>
-        <option value="60000" data-i18n="settings.status.60s">60 seconds</option>
-        <option value="120000" data-i18n="settings.status.2m">2 minutes</option>
-        <option value="300000" data-i18n="settings.status.5m">5 minutes</option>
-      </select>
+      <label for="keepConnected" data-i18n="settings.keepConnected.label">Keep dimmers connected</label>
+      <input id="keepConnected" type="checkbox">
     </div>
-    <p data-i18n="settings.status.help">A status poll reads the dimmers' levels over Bluetooth. Without it, Homey only shows what the app itself sent. Polling also makes control slower — if the app becomes slow or unreliable, turn it off.</p>
+    <p data-i18n="settings.keepConnected.hint">Faster connection. Blocks the SG app if you have only one dimmer.</p>
   </fieldset>
 
   <fieldset>
-    <legend data-i18n="settings.keepAlive.title">Keep the connection open</legend>
+    <legend data-i18n="settings.troubleshooting.title">Troubleshooting</legend>
     <div class="field row">
-      <label for="keepAliveSeconds" data-i18n="settings.keepAlive.label">After a command</label>
-      <select id="keepAliveSeconds">
-        <option value="0" data-i18n="settings.keepAlive.off">Off</option>
-        <option value="15" data-i18n="settings.keepAlive.15s">15 seconds</option>
-        <option value="30" data-i18n="settings.keepAlive.30s">30 seconds</option>
-        <option value="60" data-i18n="settings.keepAlive.60s">60 seconds</option>
-      </select>
-    </div>
-    <p data-i18n="settings.keepAlive.help">Experimental. Normally the app connects for each command, which takes a few seconds. With this on, it stays connected for a short while after a command, so the next ones are fast. Homey has one Bluetooth radio: while the connection is held, other Bluetooth apps on this Homey and the SG phone app may have trouble reaching their devices, and status polling waits. Pick the shortest time that feels fast enough.</p>
-  </fieldset>
-
-  <fieldset>
-    <legend data-i18n="settings.logging.title">Logging</legend>
-    <div class="field row">
-      <label for="loggingEnabled" data-i18n="settings.logging.info">Informational logging</label>
-      <input id="loggingEnabled" type="checkbox">
-    </div>
-    <p data-i18n="settings.logging.infoHint">Commands and status updates in the app log. Errors are always logged.</p>
-    <div class="field row">
-      <label for="debugLogging" data-i18n="settings.logging.debug">Verbose Bluetooth logging</label>
+      <label for="debugLogging" data-i18n="settings.troubleshooting.debug">Detailed logging</label>
       <input id="debugLogging" type="checkbox">
     </div>
-    <p data-i18n="settings.logging.debugHint">Full BLE and GATT tracing. Only turn this on while troubleshooting.</p>
   </fieldset>
-
-  <button id="save" class="right" data-i18n="settings.save">Save</button>
 
   <script>
     function onHomeyReady(Homey) {
-      const interval = document.getElementById('statusPollMs');
-      const keepAlive = document.getElementById('keepAliveSeconds');
-      const info = document.getElementById('loggingEnabled');
+      const keepConnected = document.getElementById('keepConnected');
       const debug = document.getElementById('debugLogging');
-      const save = document.getElementById('save');
 
       const get = (key) => new Promise((resolve, reject) => {
         Homey.get(key, (err, value) => (err ? reject(err) : resolve(value)));
@@ -66,30 +32,23 @@
       const set = (key, value) => new Promise((resolve, reject) => {
         Homey.set(key, value, (err) => (err ? reject(err) : resolve()));
       });
+      const fail = (err) => Homey.alert(String((err && err.message) || err));
 
-      Promise.all([get('statusPollMs'), get('loggingEnabled'), get('debugLogging'), get('keepAliveSeconds')])
-        .then(([pollMs, infoEnabled, debugEnabled, keepAliveSeconds]) => {
-          interval.value = String(pollMs == null ? 300000 : pollMs);
-          keepAlive.value = String(keepAliveSeconds == null ? 0 : keepAliveSeconds);
-          info.checked = infoEnabled !== false;
+      // Unset, "Keep dimmers connected" follows the number of dimmers; the app
+      // keeps that default in keepConnectedDefault. Each box saves at once.
+      Promise.all([get('keepConnected'), get('keepConnectedDefault'), get('debugLogging')])
+        .then(([choice, byDefault, debugEnabled]) => {
+          keepConnected.checked = typeof choice === 'boolean' ? choice : byDefault === true;
           debug.checked = debugEnabled === true;
           Homey.ready();
         })
         .catch((err) => {
-          Homey.alert(String(err.message || err));
+          fail(err);
           Homey.ready();
         });
 
-      save.addEventListener('click', () => {
-        Promise.all([
-          set('statusPollMs', Number(interval.value)),
-          set('keepAliveSeconds', Number(keepAlive.value)),
-          set('loggingEnabled', info.checked),
-          set('debugLogging', debug.checked),
-        ])
-          .then(() => Homey.alert(Homey.__('settings.saved')))
-          .catch((err) => Homey.alert(String(err.message || err)));
-      });
+      keepConnected.addEventListener('change', () => set('keepConnected', keepConnected.checked).catch(fail));
+      debug.addEventListener('change', () => set('debugLogging', debug.checked).catch(fail));
     }
   </script>
 </body>

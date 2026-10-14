@@ -35,5 +35,9 @@
   "2.0.10": {
     "en": "New app icon and a new app image showing the dimmer in a living room.",
     "no": "Nytt app-ikon og nytt app-bilde som viser dimmeren i en stue."
+  },
+  "2.1.0": {
+    "en": "Option to keep the dimmers connected. Faster control, and wall switch changes show up right away.",
+    "no": "Valg for å holde dimmerne tilkoblet. Raskere styring, og endringer på veggbryteren vises med en gang."
   }
 }

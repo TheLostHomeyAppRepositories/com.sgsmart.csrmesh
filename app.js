@@ -4,12 +4,11 @@ const Homey = require('homey');
 const MeshBridge = require('./lib/MeshBridge');
 const { deriveNetworkKey, DEFAULT_PASSPHRASE } = require('./lib/csrmesh');
 
-// App settings and their defaults.
+// App settings and their defaults. keepConnected ("Keep dimmers connected")
+// has no stored default: unset, it follows the number of dimmers; see
+// MeshBridge._keepConnected().
 const DEFAULTS = {
-  loggingEnabled: true,    // normal informational logging
   debugLogging: false,     // verbose BLE/GATT tracing, for troubleshooting only
-  statusPollMs: 300000,    // 5 min; 0 = no background status polling
-  keepAliveSeconds: 0,     // hold the link this long after a command; 0 = off
 };
 
 class SGSmartApp extends Homey.App {
@@ -21,10 +20,9 @@ class SGSmartApp extends Homey.App {
     this.bridge = new MeshBridge(this);
     this.bridge.startStatus((idHex, level) => this._dispatchStatus(idHex, level));
 
-    // App settings can change while the app runs. Apply a new status interval
-    // immediately instead of requiring a restart.
+    // "Keep dimmers connected" takes effect at once, without a restart.
     this.homey.settings.on('set', (key) => {
-      if (key === 'statusPollMs') this.bridge.refreshStatusPolling();
+      if (key === 'keepConnected') this.bridge.applyMode();
     });
 
     let seq = Number(this.homey.settings.get('seqCounter'));
@@ -47,6 +45,22 @@ class SGSmartApp extends Homey.App {
     }
   }
 
+  // Dimmers (not groups) paired in this app.
+  dimmerCount() {
+    return this._devices().filter((device) => typeof device.getMeshId === 'function').length;
+  }
+
+  // A dimmer was initialised, added or deleted. The default of "Keep dimmers
+  // connected" depends on how many there are, and the settings page shows it.
+  dimmersChanged() {
+    if (this._dimmersTimer) this.homey.clearTimeout(this._dimmersTimer);
+    this._dimmersTimer = this.homey.setTimeout(() => {
+      this._dimmersTimer = null;
+      this.homey.settings.set('keepConnectedDefault', this.dimmerCount() >= 2);
+      if (this.bridge) this.bridge.applyMode();
+    }, 2000);
+  }
+
   // Every paired device, across all drivers.
   _devices() {
     const devices = [];
@@ -61,7 +75,10 @@ class SGSmartApp extends Homey.App {
   }
 
   _dispatchStatus(idHex, level) {
-    for (const device of this._devices()) {
+    // Dimmers first: a group shows the level its dimmers have just decided on.
+    const devices = this._devices()
+      .sort((a, b) => (typeof b.getMeshId === 'function') - (typeof a.getMeshId === 'function'));
+    for (const device of devices) {
       if (typeof device.applyMeshStatus === 'function') {
         try {
           device.applyMeshStatus(idHex, level);

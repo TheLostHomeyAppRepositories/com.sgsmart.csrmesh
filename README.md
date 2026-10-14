@@ -43,9 +43,19 @@ a mesh node tends to drop the GATT link after roughly ten seconds, the bridge:
 - serialises everything, with one shared recovery owner and a 5 s circuit
   breaker, so a failing radio cannot turn into a retry storm.
 
-Status reading is optional and off by default: polling holds the radio, which
-competes with commands. Turn it on in app settings if you want Homey to follow
-the physical wall switch.
+Status from the wall switch reaches Homey in one of two ways, set by the one
+app setting, **Keep dimmers connected**:
+
+- **On** (the default with two or more dimmers): the app holds a link to the
+  strongest dimmer, keeps it alive with the SG heartbeat and listens to the
+  mesh, so changes show up in Homey within about a second and commands go out
+  without a new connection. A dimmer that is held cannot be reached by the SG
+  phone app; with two or more dimmers the phone uses another one. A scan once
+  an hour keeps the choice of dimmer current.
+- **Off** (the default with one dimmer): the app connects for each command and
+  holds the link for a minute afterwards, and reads status every five minutes.
+
+Tested on Homey Pro (2026), firmware 13.5.1.
 
 ## Development
 
