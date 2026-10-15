@@ -6,8 +6,18 @@
   "class": "light",
   "capabilities": [
     "onoff",
-    "dim"
+    "dim",
+    "measure_signal_strength",
+    "sg_connection"
   ],
+  "capabilitiesOptions": {
+    "measure_signal_strength": {
+      "title": {
+        "en": "Signal to Homey",
+        "no": "Signal til Homey"
+      }
+    }
+  },
   "platforms": [
     "local"
   ],

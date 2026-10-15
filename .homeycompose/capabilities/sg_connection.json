@@ -1,0 +1,12 @@
+{
+  "type": "string",
+  "title": {
+    "en": "Status",
+    "no": "Status"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insights": false,
+  "icon": "/assets/capabilities/sg_connection.svg"
+}

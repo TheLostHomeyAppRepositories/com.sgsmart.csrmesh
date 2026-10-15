@@ -1,8 +1,8 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.sgsmart.csrmesh",
-  "version": "2.1.0",
-  "compatibility": ">=12.0.0",
+  "version": "2.2.0",
+  "compatibility": ">=12.2.0",
   "sdk": 3,
   "platforms": [
     "local"
@@ -86,8 +86,18 @@
       "class": "light",
       "capabilities": [
         "onoff",
-        "dim"
+        "dim",
+        "measure_signal_strength",
+        "sg_connection"
       ],
+      "capabilitiesOptions": {
+        "measure_signal_strength": {
+          "title": {
+            "en": "Signal to Homey",
+            "no": "Signal til Homey"
+          }
+        }
+      },
       "platforms": [
         "local"
       ],
@@ -176,5 +186,19 @@
         }
       ]
     }
-  ]
+  ],
+  "capabilities": {
+    "sg_connection": {
+      "type": "string",
+      "title": {
+        "en": "Status",
+        "no": "Status"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false,
+      "icon": "/assets/capabilities/sg_connection.svg"
+    }
+  }
 }

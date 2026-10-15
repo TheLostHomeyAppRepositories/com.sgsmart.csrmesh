@@ -13,11 +13,22 @@
   "settings": {
     "keepConnected": {
       "label": "Hold dimmerne tilkoblet",
-      "hint": "Raskere tilkobling. Stenger ute SG-appen hvis du bare har én dimmer."
+      "hint": "Raskere styring, og veggbryteren vises med en gang. Har du bare én dimmer, kan ikke SG-appen koble til samtidig."
+    },
+    "signal": {
+      "title": "Signal til Homey",
+      "hint": "Bare dimmeren som viser \"Direkte\", trenger godt signal. Er den svak, flytt Homey nærmere en av dimmerne."
     },
     "troubleshooting": {
       "title": "Feilsøking",
       "debug": "Detaljert logging"
+    }
+  },
+  "device": {
+    "connection": {
+      "directGood": "Direkte, godt",
+      "directWeak": "Direkte, svakt",
+      "indirect": "Indirekte"
     }
   }
 }

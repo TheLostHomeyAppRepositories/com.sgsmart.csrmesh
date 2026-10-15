@@ -39,5 +39,9 @@
   "2.1.0": {
     "en": "Option to keep the dimmers connected. Faster control, and wall switch changes show up right away.",
     "no": "Valg for å holde dimmerne tilkoblet. Raskere styring, og endringer på veggbryteren vises med en gang."
+  },
+  "2.2.0": {
+    "en": "Signal to Homey for each dimmer, and whether it is connected to Homey directly or indirectly. Faster reconnect after a dimmer drops the link.",
+    "no": "Signal til Homey for hver dimmer, og om den er koblet direkte eller indirekte til Homey. Raskere ny tilkobling når en dimmer kobler fra."
   }
 }

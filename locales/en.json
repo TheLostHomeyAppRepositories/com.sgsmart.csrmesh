@@ -13,11 +13,22 @@
   "settings": {
     "keepConnected": {
       "label": "Keep dimmers connected",
-      "hint": "Faster connection. Blocks the SG app if you have only one dimmer."
+      "hint": "Faster control, and wall switch changes show up right away. With only one dimmer, the SG app can't connect at the same time."
+    },
+    "signal": {
+      "title": "Signal to Homey",
+      "hint": "Only the dimmer showing \"Direct\" needs a good signal. If it is weak, move Homey closer to one of the dimmers."
     },
     "troubleshooting": {
       "title": "Troubleshooting",
       "debug": "Detailed logging"
+    }
+  },
+  "device": {
+    "connection": {
+      "directGood": "Direct, good",
+      "directWeak": "Direct, weak",
+      "indirect": "Indirect"
     }
   }
 }

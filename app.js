@@ -2,7 +2,7 @@
 
 const Homey = require('homey');
 const MeshBridge = require('./lib/MeshBridge');
-const { deriveNetworkKey, DEFAULT_PASSPHRASE } = require('./lib/csrmesh');
+const { deriveNetworkKey, DEFAULT_PASSPHRASE, meshIdFromName } = require('./lib/csrmesh');
 
 // App settings and their defaults. keepConnected ("Keep dimmers connected")
 // has no stored default: unset, it follows the number of dimmers; see
@@ -87,6 +87,32 @@ class SGSmartApp extends Homey.App {
         }
       }
     }
+  }
+
+  // A node seen in a scan: its @NDxxxx name carries the dimmer's mesh id.
+  reportSignal(nodeName, rssi) {
+    const id = meshIdFromName(nodeName);
+    if (id === null) return;
+    for (const device of this._devices()) {
+      if (typeof device.setSignal === 'function' && device.getMeshId() === id) device.setSignal(rssi);
+    }
+  }
+
+  // The bridge was changed (MeshBridge stores it as bridgeUuid): Homey now
+  // connects to that dimmer directly and reaches the others via it.
+  bridgeChanged() {
+    const id = this.bridgeMeshId();
+    if (id === null) return;
+    for (const device of this._devices()) {
+      if (typeof device.setConnection === 'function') device.setConnection(device.getMeshId() === id);
+    }
+  }
+
+  // Mesh id of the last known bridge, kept across restarts in bridgeUuid.
+  bridgeMeshId() {
+    const uuid = this.bridge && this.bridge._preferredUuid;
+    if (!uuid) return null;
+    return meshIdFromName(this.bridge._nodeNameFor({ uuid }));
   }
 
   // Mesh ids of every paired dimmer, so a status poll knows when it has heard
