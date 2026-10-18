@@ -1,6 +1,7 @@
 {
   "pair": {
-    "noDimmersFound": "No dimmers found nearby. Make sure they have power and that Homey Pro is within Bluetooth range, then try again.",
+    "noDimmersFound": "No dimmers found. The app supports only the first generation (@ND), not SG Smart 3.0. Close the SG Smart app on your phone and try again closer to a dimmer. If that does not help, send a diagnostics report right away: Settings, Apps, SG LEDDim.",
+    "allAlreadyAdded": "All the dimmers found have already been added.",
     "group": "Group",
     "members": {
       "title": "Dimmers in this group",
