@@ -11,12 +11,20 @@ const DEFAULTS = {
   debugLogging: false,     // verbose BLE/GATT tracing, for troubleshooting only
 };
 
+// No status from a dimmer for this long: show a warning on it. A held link
+// hears every dimmer about every 1.5 s; without it, a status poll runs every
+// five minutes and can miss a round or two.
+const NOT_HEARD_HELD_MS = 3 * 60 * 1000;
+const NOT_HEARD_POLL_MS = 30 * 60 * 1000;
+const NOT_HEARD_CHECK_MS = 60 * 1000;
+
 class SGSmartApp extends Homey.App {
   async onInit() {
     for (const [key, value] of Object.entries(DEFAULTS)) {
       if (this.homey.settings.get(key) === null) this.homey.settings.set(key, value);
     }
 
+    this._startNotHeardCheck();
     this.bridge = new MeshBridge(this);
     this.bridge.startStatus((idHex, level) => this._dispatchStatus(idHex, level));
 
@@ -38,6 +46,7 @@ class SGSmartApp extends Homey.App {
   // Homey keeps BLE connections outside the app process: one left open here
   // survives an app restart and is only cleared by rebooting Homey. Release it.
   async onUninit() {
+    if (this._notHeardTimer) this.homey.clearInterval(this._notHeardTimer);
     if (this.bridge) {
       await this.bridge.shutdown().catch((err) => {
         this.error(`bridge shutdown failed: ${err.message || err}`);
@@ -75,6 +84,7 @@ class SGSmartApp extends Homey.App {
   }
 
   _dispatchStatus(idHex, level) {
+    this._statusHeard(idHex);
     // Dimmers first: a group shows the level its dimmers have just decided on.
     const devices = this._devices()
       .sort((a, b) => (typeof b.getMeshId === 'function') - (typeof a.getMeshId === 'function'));
@@ -86,6 +96,53 @@ class SGSmartApp extends Homey.App {
           this.error(`applying status to ${device.getName()} failed: ${err.message || err}`);
         }
       }
+    }
+  }
+
+  // The status the app already gets is the only source: nothing is sent or
+  // scanned for this. A dimmer's clock starts when the app first sees it, at
+  // start or just after pairing. Homey is called only when the warning changes.
+  _startNotHeardCheck() {
+    this._heardAt = new Map(); // mesh id -> last status
+    this._firstSeen = new WeakMap(); // device -> first check that saw it
+    this._warned = new WeakMap(); // device -> true (set), false (cleared)
+    this._notHeardTimer = this.homey.setInterval(() => this._checkNotHeard(), NOT_HEARD_CHECK_MS);
+  }
+
+  _statusHeard(idHex) {
+    const id = parseInt(idHex, 16);
+    const before = this._heardAt.get(id);
+    const now = Date.now();
+    this._heardAt.set(id, now);
+    for (const device of this._devices()) {
+      if (typeof device.getMeshId !== 'function' || device.getMeshId() !== id) continue;
+      // Unknown after a start: clear a warning Homey may still show.
+      if (this._warned.get(device) === false) continue;
+      const wasSet = this._warned.get(device) === true;
+      this._warned.set(device, false);
+      device.unsetWarning().catch((err) => this.error(`clearing warning failed: ${err.message || err}`));
+      if (wasSet) {
+        const since = Math.max(before || 0, this._firstSeen.get(device) || 0);
+        device.log(`warning cleared: status heard again after ${Math.round((now - since) / 60000)} min`);
+      }
+    }
+  }
+
+  _checkNotHeard() {
+    const now = Date.now();
+    // Read only: which mode MeshBridge is in right now.
+    const held = !!(this.bridge && this.bridge._held);
+    const limit = held ? NOT_HEARD_HELD_MS : NOT_HEARD_POLL_MS;
+    for (const device of this._devices()) {
+      if (typeof device.getMeshId !== 'function') continue;
+      if (!this._firstSeen.has(device)) this._firstSeen.set(device, now);
+      const last = Math.max(this._heardAt.get(device.getMeshId()) || 0, this._firstSeen.get(device));
+      if (now - last < limit || this._warned.get(device) === true) continue;
+      this._warned.set(device, true);
+      device.setWarning(this.homey.__('device.notHeard'))
+        .catch((err) => this.error(`setting warning failed: ${err.message || err}`));
+      device.log(`warning set: no status for ${Math.round((now - last) / 60000)} min `
+        + `(limit ${limit / 60000} min, ${held ? 'held link' : 'without held link'})`);
     }
   }
 

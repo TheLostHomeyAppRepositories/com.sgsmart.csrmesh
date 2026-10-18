@@ -26,6 +26,7 @@
     }
   },
   "device": {
+    "notHeard": "Har ikke hørt fra dimmeren. Feil passord, eller utenfor rekkevidde?",
     "connection": {
       "directGood": "Direkte, godt",
       "directWeak": "Direkte, svakt",

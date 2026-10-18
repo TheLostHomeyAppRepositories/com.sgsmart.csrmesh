@@ -26,6 +26,7 @@
     }
   },
   "device": {
+    "notHeard": "No status from the dimmer. Wrong password, or out of range?",
     "connection": {
       "directGood": "Direct, good",
       "directWeak": "Direct, weak",
