@@ -6,6 +6,8 @@ no SG gateway is involved.
 
 This app is unofficial and is not affiliated with, endorsed by, or supported by
 SG. It does **not** work with SG Smart 3.0, which uses Bluetooth SIG Mesh.
+With SG Smart 3.0, use SG Smart Gateway 3.0 to connect the lights to Homey
+with Matter.
 
 ## Devices
 
