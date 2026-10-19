@@ -47,5 +47,9 @@
   "2.3.0": {
     "en": "Better help when pairing, the app now says why the list is empty. A warning on a dimmer that has not reported status for a while. Less noise in the log. Information about SG Smart 3.0 in the description.",
     "no": "Bedre hjelp ved paring, appen sier nå hvorfor lista er tom. Advarsel på dimmeren når den ikke har sendt status på en stund. Mindre støy i loggen. Informasjon om SG Smart 3.0 i beskrivelsen."
+  },
+  "2.3.1": {
+    "en": "Clearer text on how to send a diagnostics report.",
+    "no": "Tydeligere tekst om hvordan du sender en diagnoserapport."
   }
 }
