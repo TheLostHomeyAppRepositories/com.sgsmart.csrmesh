@@ -33,9 +33,8 @@ function isEmpty(adv) {
     && !hexOf(adv.manufacturerData);
 }
 
-// One log line per pairing search: counts only, no addresses or node names.
 // A peripheral seen more than once counts once, with what any sighting showed.
-function scanSummary(advertisements, candidates, addedIds, seconds) {
+function scanPeripherals(advertisements) {
   const peripherals = new Map();
   for (const adv of advertisements) {
     const uuids = (adv.serviceUuids || []).map(shortUuid);
@@ -48,8 +47,15 @@ function scanSummary(advertisements, candidates, addedIds, seconds) {
     p.empty = p.empty && isEmpty(adv);
     const rssi = Number(adv.rssi);
     if (Number.isFinite(rssi) && rssi < 0) p.rssi = Math.max(p.rssi, rssi);
+    const data02fa = serviceDataList(adv).find((d) => shortUuid(d.uuid) === '02fa');
+    if (data02fa && !p.data02fa) p.data02fa = hexOf(data02fa.data).slice(0, 32);
     peripherals.set(adv.uuid, p);
   }
+  return peripherals;
+}
+
+// One log line per pairing search: counts only, no addresses or node names.
+function scanSummary(peripherals, advertisements, candidates, addedIds, seconds) {
   const all = [...peripherals.values()];
   const sg = all.filter((p) => p.sg);
   const notConnectable = sg.filter((p) => !p.connectable).length;
@@ -63,6 +69,19 @@ function scanSummary(advertisements, candidates, addedIds, seconds) {
     + ` SG: ${sg.length} (${withName} with name, ${withoutName} without name, ${notConnectable} not connectable),`
     + ` ${all.filter((p) => p.empty).length} empty.`
     + ` Listed ${candidates.length - added}, already added ${added}.${signal}`;
+}
+
+// The 02FA service data of each SG node, strongest first and numbered, with
+// no address or name: it tells SG device types apart (both of ours send
+// 10f2e71101).
+function sgNodesLine(peripherals) {
+  const strength = (p) => (Number.isFinite(p.rssi) ? p.rssi : -999);
+  const sg = [...peripherals.values()].filter((p) => p.sg).sort((a, b) => strength(b) - strength(a));
+  if (!sg.length) return 'pair: SG nodes: none';
+  const shown = sg.slice(0, 10).map((p, i) => `${i + 1}: 02FA ${p.data02fa || '-'}, `
+    + `${Number.isFinite(p.rssi) ? `${p.rssi} dB` : 'no signal'}, `
+    + `${p.connectable ? (p.named ? 'named' : 'no name') : 'not connectable'}`);
+  return `pair: SG nodes: ${shown.join('; ')}${sg.length > 10 ? `; and ${sg.length - 10} more` : ''}`;
 }
 
 class SGMeshDriver extends Homey.Driver {
@@ -94,7 +113,9 @@ class SGMeshDriver extends Homey.Driver {
       .sort(([, a], [, b]) => Number(b.rssi ?? -999) - Number(a.rssi ?? -999));
 
     const addedIds = new Set(this.getDevices().map((device) => String((device.getData() || {}).id || '').toUpperCase()));
-    this.log(scanSummary(advertisements, candidates, addedIds, seconds));
+    const peripherals = scanPeripherals(advertisements);
+    this.log(scanSummary(peripherals, advertisements, candidates, addedIds, seconds));
+    this.log(sgNodesLine(peripherals));
 
     if (!candidates.length) {
       throw new Error(this.homey.__('pair.noDimmersFound'));
