@@ -43,5 +43,9 @@
   "2.2.0": {
     "en": "Signal to Homey for each dimmer, and whether it is connected to Homey directly or indirectly. Faster reconnect after a dimmer drops the link.",
     "no": "Signal til Homey for hver dimmer, og om den er koblet direkte eller indirekte til Homey. Raskere ny tilkobling når en dimmer kobler fra."
+  },
+  "2.3.0": {
+    "en": "Better help when pairing, the app now says why the list is empty. A warning on a dimmer that has not reported status for a while. Less noise in the log. Information about SG Smart 3.0 in the description.",
+    "no": "Bedre hjelp ved paring, appen sier nå hvorfor lista er tom. Advarsel på dimmeren når den ikke har sendt status på en stund. Mindre støy i loggen. Informasjon om SG Smart 3.0 i beskrivelsen."
   }
 }
