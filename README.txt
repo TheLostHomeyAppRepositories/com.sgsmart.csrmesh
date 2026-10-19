@@ -1,4 +1,4 @@
-Tested with the first generation SG LEDDim Smart rotary dimmer. Other older SG dimmers named @NDxxxx may work. Have another SG device named @NDxxxx? Try to add it, use it a little, and send a diagnostics report right away: Settings, Apps, SG LEDDim.
+Tested with the first generation SG LEDDim Smart rotary dimmer. Other older SG dimmers named @NDxxxx may work. Have another SG device named @NDxxxx? Try to add it and use it a little. Then right away press "Create diagnostics report" on the app page, below Configure.
 
 Homey Pro controls the dimmers directly over Bluetooth, no gateway or bridge needed. Add one device per dimmer, and a group for all if you like. On/off and dimming are supported. When the dimmers are kept connected, wall switch changes show up in Homey right away. Commands are encrypted with the network password, usually 1234. This can be changed in the device settings.
 

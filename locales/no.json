@@ -20,10 +20,13 @@
       "title": "Signal til Homey",
       "hint": "Bare dimmeren som viser \"Direkte\", trenger godt signal. Er den svak, flytt Homey nærmere en av dimmerne."
     },
+    "otherDevice": {
+      "title": "Andre SG-enheter",
+      "hint": "Har du en annen SG-enhet med @ND-navn? Prøv å legge den til og bruk den litt. Trykk så med en gang \"Opprett diagnostikkrapport\" på app-siden, under Konfigurer."
+    },
     "troubleshooting": {
       "title": "Feilsøking",
-      "debug": "Detaljert logging",
-      "otherDevice": "Har du en annen SG-enhet med @ND-navn? Prøv å legge den til, bruk den litt, og send en diagnoserapport med en gang: Innstillinger, Apper, SG LEDDim."
+      "debug": "Detaljert logging"
     }
   },
   "device": {

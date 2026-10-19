@@ -20,10 +20,13 @@
       "title": "Signal to Homey",
       "hint": "Only the dimmer showing \"Direct\" needs a good signal. If it is weak, move Homey closer to one of the dimmers."
     },
+    "otherDevice": {
+      "title": "Other SG devices",
+      "hint": "Have another SG device named @NDxxxx? Try to add it and use it a little. Then right away press \"Create diagnostics report\" on the app page, below Configure."
+    },
     "troubleshooting": {
       "title": "Troubleshooting",
-      "debug": "Detailed logging",
-      "otherDevice": "Have another SG device named @NDxxxx? Try to add it, use it a little, and send a diagnostics report right away: Settings, Apps, SG LEDDim."
+      "debug": "Detailed logging"
     }
   },
   "device": {

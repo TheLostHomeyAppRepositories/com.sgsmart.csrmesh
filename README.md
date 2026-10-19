@@ -25,8 +25,9 @@ Both expose `onoff` and `dim`.
 2. If the lights do not respond, open the device settings and enter your
    installation's CSRmesh **network passphrase** (most installations use `1234`).
    A raw 16-byte network key can be entered instead under the advanced setting.
-3. Have another SG device named `@NDxxxx`? Try to add it, use it a little, and
-   send a diagnostics report right away: Settings, Apps, SG LEDDim.
+3. Have another SG device named `@NDxxxx`? Try to add it and use it a little.
+   Then right away press "Create diagnostics report" on the app page, below
+   Configure.
 
 ## How it works
 
