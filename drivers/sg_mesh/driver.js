@@ -4,9 +4,12 @@ const Homey = require('homey');
 const { NODE_NAME } = require('../../lib/csrmesh');
 
 // 16-bit form of a service UUID as Homey gives it (with or without dashes).
+// Only a Bluetooth base UUID has one; any other UUID is kept whole, so a
+// vendor UUID that happens to hold fef1 is not counted as CSRmesh.
 function shortUuid(uuid) {
   const s = String(uuid || '').toLowerCase().replace(/-/g, '');
-  return s.length === 32 ? s.slice(4, 8) : s;
+  const base = /^0000([0-9a-f]{4})00001000800000805f9b34fb$/.exec(s);
+  return base ? base[1] : s;
 }
 
 function serviceDataList(adv) {
@@ -64,7 +67,7 @@ function scanSummary(peripherals, advertisements, candidates, addedIds, seconds)
   const added = candidates.filter(([localName]) => addedIds.has(localName)).length;
   const rssi = sg.map((p) => p.rssi).filter(Number.isFinite);
   const signal = rssi.length ? ` SG signal ${Math.min(...rssi)} to ${Math.max(...rssi)} dB.` : '';
-  return `pair: scan ${seconds.toFixed(1)} s, ${advertisements.length} advertisement(s).`
+  return `pair: scan ${seconds.toFixed(1)} s, ${advertisements.length} advertisement(s) from ${all.length} device(s).`
     + ` Mesh: ${all.filter((p) => p.csrmesh).length} CSRmesh, ${all.filter((p) => p.sigMesh).length} Bluetooth Mesh.`
     + ` SG: ${sg.length} (${withName} with name, ${withoutName} without name, ${notConnectable} not connectable),`
     + ` ${all.filter((p) => p.empty).length} empty.`
