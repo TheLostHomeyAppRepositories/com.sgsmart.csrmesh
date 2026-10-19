@@ -12,9 +12,10 @@ const DEFAULTS = {
 };
 
 // No status from a dimmer for this long: show a warning on it. A held link
-// hears every dimmer about every 1.5 s; without it, a status poll runs every
-// five minutes and can miss a round or two.
-const NOT_HEARD_HELD_MS = 3 * 60 * 1000;
+// usually hears every dimmer about every 1.5 s, but the bridge itself has gone
+// quiet for up to about 2 min; without it, a status poll runs every five
+// minutes and can miss a round or two.
+const NOT_HEARD_HELD_MS = 5 * 60 * 1000;
 const NOT_HEARD_POLL_MS = 30 * 60 * 1000;
 const NOT_HEARD_CHECK_MS = 60 * 1000;
 
