@@ -22,7 +22,8 @@
     },
     "troubleshooting": {
       "title": "Troubleshooting",
-      "debug": "Detailed logging"
+      "debug": "Detailed logging",
+      "otherDevice": "Have another SG device named @NDxxxx? Try to add it, use it a little, and send a diagnostics report right away: Settings, Apps, SG LEDDim."
     }
   },
   "device": {

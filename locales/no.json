@@ -22,7 +22,8 @@
     },
     "troubleshooting": {
       "title": "Feilsøking",
-      "debug": "Detaljert logging"
+      "debug": "Detaljert logging",
+      "otherDevice": "Har du en annen SG-enhet med @ND-navn? Prøv å legge den til, bruk den litt, og send en diagnoserapport med en gang: Innstillinger, Apper, SG LEDDim."
     }
   },
   "device": {
