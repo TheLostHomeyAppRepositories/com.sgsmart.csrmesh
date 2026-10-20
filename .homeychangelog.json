@@ -51,5 +51,9 @@
   "2.3.1": {
     "en": "Clearer text on how to send a diagnostics report.",
     "no": "Tydeligere tekst om hvordan du sender en diagnoserapport."
+  },
+  "2.4.0": {
+    "en": "When you add dimmers, the app searches first and says clearly whether it found new ones. With \"Keep dimmers connected\", status from the dimmer Homey is connected to now arrives as quickly as from the others. A note under \"Detailed logging\" on when to use it.",
+    "no": "Når du legger til dimmere, søker appen først og sier tydelig om den fant nye. Med \"Hold dimmerne tilkoblet\" kommer status fra dimmeren Homey er koblet til, nå like raskt som fra de andre. En forklaring under \"Detaljert logging\" om når den skal brukes."
   }
 }
