@@ -53,7 +53,7 @@
     "no": "Tydeligere tekst om hvordan du sender en diagnoserapport."
   },
   "2.4.0": {
-    "en": "When you add dimmers, the app searches first and says clearly whether it found new ones. With \"Keep dimmers connected\", status from the dimmer Homey is connected to now arrives as quickly as from the others. A note under \"Detailed logging\" on when to use it.",
-    "no": "Når du legger til dimmere, søker appen først og sier tydelig om den fant nye. Med \"Hold dimmerne tilkoblet\" kommer status fra dimmeren Homey er koblet til, nå like raskt som fra de andre. En forklaring under \"Detaljert logging\" om når den skal brukes."
+    "en": "Easier to add dimmers: the app searches first and tells you clearly whether it found new ones. With \"Keep dimmers connected\", status comes just as fast from every dimmer, including the one Homey is connected to. You can see each dimmer's signal, and whether it reaches Homey directly or through another dimmer. A warning if a dimmer has not reported status for a while, and faster reconnect when a dimmer drops out. Clearer help on logging and diagnostics reports, and information about SG Smart 3.0 in the description.",
+    "no": "Enklere å legge til dimmere: appen søker først og sier tydelig om den fant nye. Med \"Hold dimmerne tilkoblet\" kommer status like raskt fra alle dimmerne, også den Homey er koblet til. Du ser signalet for hver dimmer, og om den når Homey direkte eller via en annen dimmer. Advarsel hvis en dimmer ikke har sendt status på en stund, og raskere ny tilkobling når en dimmer faller ut. Tydeligere hjelp om logging og diagnoserapport, og informasjon om SG Smart 3.0 i beskrivelsen."
   }
 }
