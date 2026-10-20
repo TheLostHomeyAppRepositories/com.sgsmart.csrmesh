@@ -17,7 +17,7 @@
       "noneText": "Appen støtter bare første generasjon (@ND), ikke SG Smart 3.0. Lukk SG Smart-appen på telefonen og prøv igjen nærmere en dimmer. Hjelper ikke det, trykk med en gang \"Opprett diagnostikkrapport\" på app-siden, under Konfigurer.",
       "allAddedTitle": "Ingen nye dimmere",
       "failedTitle": "Søket feilet",
-      "failedText": "Prøv igjen om litt. Feilen var: «__error__»",
+      "failedText": "Prøv igjen om litt. Feilen var: \"__error__\"",
       "again": "Søk igjen"
     }
   },
