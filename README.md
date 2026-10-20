@@ -60,7 +60,7 @@ app setting, **Keep dimmers connected**:
 - **Off** (the default with one dimmer): the app connects for each command and
   holds the link for a minute afterwards, and reads status every five minutes.
 
-Tested on Homey Pro (2026), firmware 13.5.1.
+Tested on Homey Pro (2026), firmware 13.5.2. Not tested on Homey Self-Hosted Server.
 
 ## Development
 

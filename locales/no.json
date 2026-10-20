@@ -26,7 +26,8 @@
     },
     "troubleshooting": {
       "title": "Feilsøking",
-      "debug": "Detaljert logging"
+      "debug": "Detaljert logging",
+      "hint": "Bare når utvikleren ber om det. Slå den av igjen før du sender en diagnoserapport."
     }
   },
   "device": {

@@ -26,7 +26,8 @@
     },
     "troubleshooting": {
       "title": "Troubleshooting",
-      "debug": "Detailed logging"
+      "debug": "Detailed logging",
+      "hint": "Only when the developer asks for it. Turn it off again before you send a diagnostics report."
     }
   },
   "device": {
