@@ -9,6 +9,16 @@
       "none": "Ingen dimmere er lagt til ennå. Legg til dimmerne først, og så en gruppe.",
       "save": "Lagre",
       "pickOne": "Huk av minst én dimmer."
+    },
+    "search": {
+      "title": "Søker etter dimmere",
+      "wait": "Dette tar cirka 10 sekunder.",
+      "noneTitle": "Fant ingen dimmere",
+      "noneText": "Appen støtter bare første generasjon (@ND), ikke SG Smart 3.0. Lukk SG Smart-appen på telefonen og prøv igjen nærmere en dimmer. Hjelper ikke det, trykk med en gang \"Opprett diagnostikkrapport\" på app-siden, under Konfigurer.",
+      "allAddedTitle": "Ingen nye dimmere",
+      "failedTitle": "Søket feilet",
+      "failedText": "Prøv igjen om litt. Feilen var: «__error__»",
+      "again": "Søk igjen"
     }
   },
   "settings": {

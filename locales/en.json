@@ -9,6 +9,16 @@
       "none": "No dimmers have been added yet. Add your dimmers first, then add a group.",
       "save": "Save",
       "pickOne": "Tick at least one dimmer."
+    },
+    "search": {
+      "title": "Searching for dimmers",
+      "wait": "This takes about 10 seconds.",
+      "noneTitle": "No dimmers found",
+      "noneText": "The app supports only the first generation (@ND), not SG Smart 3.0. Close the SG Smart app on your phone and try again closer to a dimmer. If that does not help, right away press \"Create diagnostics report\" on the app page, below Configure.",
+      "allAddedTitle": "No new dimmers",
+      "failedTitle": "The search failed",
+      "failedText": "Try again in a moment. The error was: \"__error__\"",
+      "again": "Search again"
     }
   },
   "settings": {

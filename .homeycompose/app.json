@@ -28,6 +28,18 @@
     "developers": [
       {
         "name": "Trond"
+      },
+      {
+        "name": "nkaminski (csrmesh, the CSRmesh protocol this app follows)"
+      },
+      {
+        "name": "fromm1990 (found that SG's dimmers are ordinary CSRmesh)"
+      },
+      {
+        "name": "einaros (decoded the protocol in 2020)"
+      },
+      {
+        "name": "erlwes (brought the CSRmesh finding to Home Assistant)"
       }
     ]
   },

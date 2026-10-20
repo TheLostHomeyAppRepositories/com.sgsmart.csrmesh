@@ -31,9 +31,16 @@
   },
   "pair": [
     {
+      "id": "search",
+      "navigation": {
+        "next": "list_devices"
+      }
+    },
+    {
       "id": "list_devices",
       "template": "list_devices",
       "navigation": {
+        "prev": "search",
         "next": "add_devices"
       }
     },

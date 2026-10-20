@@ -87,8 +87,45 @@ function sgNodesLine(peripherals) {
   return `pair: SG nodes: ${shown.join('; ')}${sg.length > 10 ? `; and ${sg.length - 10} more` : ''}`;
 }
 
+// The list may reuse the search view's result for this long; after that, or
+// with no result yet, it searches again.
+const SEARCH_FRESH_MS = 60 * 1000;
+
 class SGMeshDriver extends Homey.Driver {
+  // The search view (pair/search.html) searches first and opens the list only
+  // when there is a new dimmer. Otherwise it stays, with its own title and
+  // text, instead of the list template's fixed "New devices found".
+  async onPair(session) {
+    let last = null;
+    const search = async () => {
+      last = { result: await this._search(), at: Date.now() };
+      return last.result;
+    };
+    session.setHandler('search', async () => {
+      const { devices, reason } = await search();
+      return { reason, count: devices.length };
+    });
+    session.setHandler('list_devices', async () => {
+      const fresh = last && Date.now() - last.at <= SEARCH_FRESH_MS;
+      return this._listFrom(fresh ? last.result : await search());
+    });
+  }
+
+  // The list as before 2.4.0, with the same errors when nothing is new.
   async onPairListDevices() {
+    return this._listFrom(await this._search());
+  }
+
+  _listFrom({ devices, reason }) {
+    if (reason === 'none') throw new Error(this.homey.__('pair.noDimmersFound'));
+    if (reason === 'allAdded') throw new Error(this.homey.__('pair.allAlreadyAdded'));
+    return devices;
+  }
+
+  // One pairing search: the same scan, log lines and comparison with the
+  // dimmers already added as before 2.4.0. Returns { devices, reason }, where
+  // reason is 'none' (no dimmer found), 'allAdded' or null (something new).
+  async _search() {
     const started = Date.now();
     let advertisements;
     try {
@@ -120,17 +157,10 @@ class SGMeshDriver extends Homey.Driver {
     this.log(scanSummary(peripherals, advertisements, candidates, addedIds, seconds));
     this.log(sgNodesLine(peripherals));
 
-    if (!candidates.length) {
-      throw new Error(this.homey.__('pair.noDimmersFound'));
-    }
-    if (candidates.every(([localName]) => addedIds.has(localName))) {
-      throw new Error(this.homey.__('pair.allAlreadyAdded'));
-    }
-
     // Devices are listed under the name they broadcast; the user renames them
     // in Homey after pairing. data.id is that stable broadcast identity, which
     // is also what Homey uses to filter out already-paired devices.
-    return candidates.map(([localName, adv]) => ({
+    const devices = candidates.map(([localName, adv]) => ({
       name: localName,
       data: { id: localName },
       store: {
@@ -139,6 +169,9 @@ class SGMeshDriver extends Homey.Driver {
         localName,
       },
     }));
+    if (!candidates.length) return { devices, reason: 'none' };
+    if (candidates.every(([localName]) => addedIds.has(localName))) return { devices, reason: 'allAdded' };
+    return { devices, reason: null };
   }
 }
 
