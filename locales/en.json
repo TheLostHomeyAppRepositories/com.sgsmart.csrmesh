@@ -42,10 +42,15 @@
   },
   "device": {
     "notHeard": "No status from the dimmer. Wrong password, or out of range?",
+    "waitingForStatus": "Waiting for the dimmer's first status.",
+    "passwordWrong": "Possibly wrong network password. See settings.",
     "connection": {
       "directGood": "Direct, good",
       "directWeak": "Direct, weak",
       "indirect": "Indirect"
     }
+  },
+  "notification": {
+    "passwordWrong": "Possibly wrong network password in SG LEDDim. Check whether Network Isolation is on in the SG app. Turn it off, or enter the right password in the settings of every dimmer."
   }
 }

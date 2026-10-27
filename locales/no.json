@@ -42,10 +42,15 @@
   },
   "device": {
     "notHeard": "Har ikke hørt fra dimmeren. Feil passord, eller utenfor rekkevidde?",
+    "waitingForStatus": "Venter på første status fra dimmeren.",
+    "passwordWrong": "Mulig feil nettverkspassord. Se innstillinger.",
     "connection": {
       "directGood": "Direkte, godt",
       "directWeak": "Direkte, svakt",
       "indirect": "Indirekte"
     }
+  },
+  "notification": {
+    "passwordWrong": "Mulig feil nettverkspassord i SG LEDDim. Sjekk om Network Isolation er aktivert i SG-appen. Slå det av, eller legg inn riktig passord i innstillingene for hver dimmer."
   }
 }

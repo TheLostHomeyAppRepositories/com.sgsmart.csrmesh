@@ -171,6 +171,12 @@ class SGGroupDevice extends Homey.Device {
     let sent = 0;
 
     for (const member of members) {
+      // Each dimmer is commanded with its own location id; one that has not
+      // reported it yet keeps the level (see SGDeviceBase._keep).
+      if (typeof member.getLocationId === 'function' && member.getLocationId() === null) {
+        this._infoLog(`group: dimmer 0x${member.getMeshId().toString(16).padStart(4, '0')} waits: location id not learned yet, `
+          + 'the level goes out with its first status, or after 10 s with the other dimmers\' location id');
+      }
       // Switched on as a room, a dimmer has just restored its own level, and
       // one that is already lit is left where it is.
       if (restore && member._lastAppliedLevel > 0) {

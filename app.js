@@ -3,6 +3,7 @@
 const Homey = require('homey');
 const MeshBridge = require('./lib/MeshBridge');
 const { deriveNetworkKey, DEFAULT_PASSPHRASE, meshIdFromName } = require('./lib/csrmesh');
+const { learnLocation } = require('./lib/location');
 
 // App settings and their defaults. keepConnected ("Keep dimmers connected")
 // has no stored default: unset, it follows the number of dimmers; see
@@ -26,8 +27,15 @@ class SGSmartApp extends Homey.App {
     }
 
     this._startNotHeardCheck();
+    // Location id per mesh id, from every status heard, learned as a dimmer
+    // learns its own (see lib/location.js).
+    this._locations = new Map();
+    // Set when no status could be read at all (MeshBridge._startKeyCheck).
+    this._statusUnreadable = false;
+    // The timeline notification for that goes out at most once per start.
+    this._passwordNotified = false;
     this.bridge = new MeshBridge(this);
-    this.bridge.startStatus((idHex, level) => this._dispatchStatus(idHex, level));
+    this.bridge.startStatus((idHex, level, location) => this._dispatchStatus(idHex, level, location));
 
     // "Keep dimmers connected" takes effect at once, without a restart.
     this.homey.settings.on('set', (key) => {
@@ -84,7 +92,10 @@ class SGSmartApp extends Homey.App {
     return devices;
   }
 
-  _dispatchStatus(idHex, level) {
+  _dispatchStatus(idHex, level, location) {
+    const meshId = parseInt(idHex, 16);
+    this._locations.set(meshId, learnLocation(this._locations.get(meshId), location).state);
+    if (this._statusUnreadable) this._statusReadable();
     this._statusHeard(idHex);
     // Dimmers first: a group shows the level its dimmers have just decided on.
     const devices = this._devices()
@@ -92,11 +103,66 @@ class SGSmartApp extends Homey.App {
     for (const device of devices) {
       if (typeof device.applyMeshStatus === 'function') {
         try {
-          device.applyMeshStatus(idHex, level);
+          device.applyMeshStatus(idHex, level, location);
         } catch (err) {
           this.error(`applying status to ${device.getName()} failed: ${err.message || err}`);
         }
       }
+    }
+  }
+
+  // The location id learned for a mesh id, or null.
+  locationFor(meshId) {
+    const state = this._locations ? this._locations.get(meshId) : undefined;
+    return state && Number.isInteger(state.value) ? state.value : null;
+  }
+
+  // The location id every paired dimmer but this one has learned, when they
+  // all have the same; null when none has one or they differ. For a dimmer
+  // whose own status does not reach Homey (see SGDeviceBase._keptWaited).
+  sharedLocation(exceptMeshId) {
+    const seen = new Set();
+    for (const device of this._devices()) {
+      if (typeof device.getLocationId !== 'function' || device.getMeshId() === exceptMeshId) continue;
+      const location = device.getLocationId();
+      if (location !== null) seen.add(location);
+    }
+    return seen.size === 1 ? [...seen][0] : null;
+  }
+
+  // A dimmer waits for its first status.
+  requestStatus() {
+    if (this.bridge) this.bridge.pollSoon();
+  }
+
+  // MeshBridge heard frames but could read no status: every dimmer shows why
+  // as a warning, and stays available, until a status is read. The timeline
+  // gets one notification as well, at most once per start.
+  statusUnreadable() {
+    if (this._statusUnreadable) return;
+    this._statusUnreadable = true;
+    this.log('no status could be read: the network password is probably wrong ("Network Isolation" in the SG app?)');
+    this._updateAvailability();
+    if (this._passwordNotified || !this.homey.notifications) return;
+    this._passwordNotified = true;
+    this.homey.notifications.createNotification({ excerpt: this.homey.__('notification.passwordWrong') })
+      .then(() => this.log('timeline notification sent: suspected wrong password'))
+      .catch((err) => this.error(`timeline notification failed: ${err.message || err}`));
+  }
+
+  statusUnreadableText() {
+    return this._statusUnreadable ? this.homey.__('device.passwordWrong') : null;
+  }
+
+  _statusReadable() {
+    this._statusUnreadable = false;
+    this.log('status can be read again');
+    this._updateAvailability();
+  }
+
+  _updateAvailability() {
+    for (const device of this._devices()) {
+      if (typeof device.updateAvailability === 'function') device.updateAvailability();
     }
   }
 
@@ -130,6 +196,8 @@ class SGSmartApp extends Homey.App {
   }
 
   _checkNotHeard() {
+    // The dimmers already say why: no status can be read at all.
+    if (this._statusUnreadable) return;
     const now = Date.now();
     // Read only: which mode MeshBridge is in right now.
     const held = !!(this.bridge && this.bridge._held);

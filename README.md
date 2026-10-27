@@ -22,9 +22,14 @@ Both expose `onoff` and `dim`.
 
 1. Add a **CSRmesh Dimmer** device. Every dimmer in range is listed under the
    name it broadcasts (`@ND1A2B`, `@ND3C4D`, …). Rename it in Homey afterwards.
-2. If the lights do not respond, open the device settings and enter your
-   installation's CSRmesh **network passphrase** (most installations use `1234`).
-   A raw 16-byte network key can be entered instead under the advanced setting.
+2. The app uses the CSRmesh **network passphrase** `1234`, which the SG app
+   sets unless **Network Isolation** is on there. If it is, turn Network
+   Isolation off in the SG app, which sets the passphrase back to `1234`. If
+   you have your home's passphrase, you can instead enter it in the settings
+   of every dimmer: they all need the same one. A raw 16-byte network key can
+   be entered instead under the advanced setting. When Homey hears the dimmers
+   but cannot read their status, the dimmers show "Possibly wrong network
+   password. See settings."
 3. Have another SG device named `@NDxxxx`? Try to add it and use it a little.
    Then right away press "Create diagnostics report" on the app page, below
    Configure.
@@ -35,6 +40,17 @@ Both expose `onoff` and `dim`.
 the network passphrase is hashed (`SHA-256` over `passphrase\0MCP`, digest
 reversed, first 16 bytes) into an AES-128 key; each packet is
 `[seq(3)][source(2)][AES-128-OFB payload][truncated HMAC(8)][0xFF]`.
+
+Every SG command and status carries the home's **location id** (two bytes the
+SG app sets in each dimmer when it is paired), and a dimmer ignores a command
+with another one. The app learns it from each dimmer's own status, which the
+dimmers send by themselves, and keeps it per dimmer. A learned one changes
+only when another comes three times in a row, as from a dimmer paired again in
+another home. Until it is known, the dimmer shows a warning, and a command
+waits for the dimmer's first status (a few seconds after the app starts).
+After 10 s without one, it goes out with the location id the other dimmers
+report, if they all report the same one. A command that still cannot go out
+after 30 s is dropped.
 
 `lib/MeshBridge.js` owns the single Bluetooth radio. It connects to the
 strongest reachable CSRmesh node, writes the packet in two fragments to the

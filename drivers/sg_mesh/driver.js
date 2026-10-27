@@ -1,7 +1,7 @@
 'use strict';
 
 const Homey = require('homey');
-const { NODE_NAME } = require('../../lib/csrmesh');
+const { NODE_NAME, meshIdFromName } = require('../../lib/csrmesh');
 
 // 16-bit form of a service UUID as Homey gives it (with or without dashes).
 // Only a Bluetooth base UUID has one; any other UUID is kept whole, so a
@@ -23,10 +23,11 @@ function hexOf(data) {
   try { return Buffer.from(data || []).toString('hex'); } catch (err) { return ''; }
 }
 
-// SG nodes send service data 02FA starting with 10 f2 e7 (f2e7 is also in
-// SG's mesh packets), named or not.
+// SG nodes send service data 02FA, named or not. Its first bytes are 10 and,
+// probably, the home's location id (see lib/sgProtocol.js), which differs from
+// home to home, so only the 02FA itself is checked.
 function hasSgData(adv) {
-  return serviceDataList(adv).some((s) => shortUuid(s.uuid) === '02fa' && hexOf(s.data).startsWith('10f2e7'));
+  return serviceDataList(adv).some((s) => shortUuid(s.uuid) === '02fa');
 }
 
 function isEmpty(adv) {
@@ -75,8 +76,7 @@ function scanSummary(peripherals, advertisements, candidates, addedIds, seconds)
 }
 
 // The 02FA service data of each SG node, strongest first and numbered, with
-// no address or name: it tells SG device types apart (both of ours send
-// 10f2e71101).
+// no address or name: it tells SG device types apart.
 function sgNodesLine(peripherals) {
   const strength = (p) => (Number.isFinite(p.rssi) ? p.rssi : -999);
   const sg = [...peripherals.values()].filter((p) => p.sg).sort((a, b) => strength(b) - strength(a));
@@ -159,16 +159,22 @@ class SGMeshDriver extends Homey.Driver {
 
     // Devices are listed under the name they broadcast; the user renames them
     // in Homey after pairing. data.id is that stable broadcast identity, which
-    // is also what Homey uses to filter out already-paired devices.
-    const devices = candidates.map(([localName, adv]) => ({
-      name: localName,
-      data: { id: localName },
-      store: {
-        peripheralUuid: adv.uuid,
-        address: adv.address || '',
-        localName,
-      },
-    }));
+    // is also what Homey uses to filter out already-paired devices. A dimmer
+    // whose status has been heard brings its location id; any other learns it
+    // from its first status (see SGDeviceBase).
+    const devices = candidates.map(([localName, adv]) => {
+      const location = this.homey.app.locationFor ? this.homey.app.locationFor(meshIdFromName(localName)) : null;
+      return {
+        name: localName,
+        data: { id: localName },
+        store: {
+          peripheralUuid: adv.uuid,
+          address: adv.address || '',
+          localName,
+          ...(location === null ? {} : { locationId: location }),
+        },
+      };
+    });
     if (!candidates.length) return { devices, reason: 'none' };
     if (candidates.every(([localName]) => addedIds.has(localName))) return { devices, reason: 'allAdded' };
     return { devices, reason: null };
