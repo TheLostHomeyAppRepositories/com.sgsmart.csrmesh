@@ -135,6 +135,20 @@ test('masking: the data of FF05, FF50 and FF11 stays, whatever its length; the r
   assert.match(out[6], /^device-1: .* data=5a3c0132070d$/);
 });
 
+test('masking: the data of a thermostat\'s FF3D, FF5C and FF5D stays too, also at 6 or 16 bytes', () => {
+  const text = [
+    '[CSR] EXT src=0x0201 dst=0x8000 op=FF3D len=6 data=5a3c16031800 thermostat',
+    '[CSR] EXT src=0x0201 dst=0x8000 op=FF5C len=6 data=5a3c45031432 thermostat',
+    '[CSR] EXT src=0x0201 dst=0x8000 op=FF5D len=16 data=5a3c1500100005000000000000000000 thermostat',
+    '[CSR] EXT src=0x0201 dst=0x8000 op=FF3E len=6 data=5a3c15050100',
+  ].join('\n');
+  const out = maskLog(text).split('\n');
+  assert.match(out[0], /data=5a3c16031800 thermostat$/);
+  assert.match(out[1], /data=5a3c45031432 thermostat$/);
+  assert.match(out[2], /data=5a3c1500100005000000000000000000 thermostat$/);
+  assert.match(out[3], /data=ble-\d$/, 'another opcode is masked as before');
+});
+
 test('the log view: a short summary, then the latest lines, masked', async () => {
   const devices = [
     { getName: () => 'Kitchen Spot', getMeshId: () => 0x1a2b },

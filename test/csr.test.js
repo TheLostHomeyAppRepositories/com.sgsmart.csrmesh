@@ -20,11 +20,15 @@ const {
 } = require('../lib/sgProducts');
 const {
   CsrNetwork, LISTEN_MARGIN_MS, LOG_PER_SENDER, NAME_LISTEN_MS, SEARCH_LISTEN_MS, STATUS_LISTEN_MS,
+  THERMOSTAT_EVERY_MS, THERMOSTAT_GAP_MS, THERMOSTAT_LISTEN_MS, THERMOSTAT_LONG_EVERY_MS, THERMOSTAT_LONG_LISTEN_MS,
+  THERMOSTAT_SCAN_RETRY_MS,
 } = require('../lib/CsrNetwork');
 const MeshBridge = require('../lib/MeshBridge');
 const SGCsrDevice = require('../lib/SGCsrDevice');
 const SGPillDriver = require('../drivers/sg_pill/driver');
-const { FF10_WITHIN_MS, SCAN_MS, SEARCH_LIMIT_MS } = require('../lib/csrPairing');
+const {
+  FF10_WITHIN_MS, SCAN_MS, SEARCH_LIMIT_MS, laterFindings, withStates,
+} = require('../lib/csrPairing');
 
 const KEY = deriveNetworkKey('test-only-pass');
 const LOC = 0x5a3c;
@@ -376,6 +380,345 @@ test('FFFF: 00 to the app\'s own address, once, on a link that listens for the s
   assert.equal(proto.statusRequestData().toString('hex'), '0080ffff00');
 });
 
+// ---- HeatReg Smart thermostats: read for the log, never set (2.5.1)
+
+// 0x0201 and 0x0202 are made-up mesh ids for an @MT and an @ST. The formats
+// are assumed, not tried with a thermostat.
+const THERMO_MT = 0x0201;
+const THERMO_ST = 0x0202;
+// What would set a thermostat (assumed): FF03, a light's level, FF3E the set
+// point, FF40 the settings, FF42 on/off. None of them may reach one.
+const SETS_A_THERMOSTAT = [0xff03, 0xff3e, 0xff40, 0xff42];
+const opOf = (plain) => (plain[2] << 8) | plain[3];
+const dstOf = (plain) => plain.readUInt16LE(0);
+const nameFrom = (src, name) => ({ src, plain: ext(0x8000, 0xff11, nameBytes(LOC, name)) });
+
+// Runs each THERMOSTAT_GAP_MS timer in turn, until a reading is done.
+async function readingsDone(app) {
+  for (let i = 0; i < 100; i += 1) {
+    await tick();
+    await tick();
+    if (![...app.homey.pending.values()].some((t) => t.ms === THERMOSTAT_GAP_MS)) return;
+    app.homey.runMs(THERMOSTAT_GAP_MS);
+  }
+  throw new Error('the readings never ended');
+}
+
+test('thermostat: FF3C with 00, 01 or 02; FF05, FF3D, FF5C and FF5D are read; shorter is nothing', () => {
+  assert.equal(proto.thermostatRequestData({ meshId: THERMO_MT, location: LOC, what: 0 }).toString('hex'), '0102ff3c5a3c00');
+  assert.equal(proto.thermostatRequestData({ meshId: THERMO_MT, location: LOC, what: 2 }).toString('hex'), '0102ff3c5a3c02');
+  // On, heating, clock set; 21.5 °C; firmware 1.4; schedule on; no errors.
+  assert.deepEqual(proto.parseThermostatStatus(Buffer.from([0x5a, 0x3c, 0xa1, 21, 5, 1, 4, 0x00, 0x00])), {
+    location: LOC, on: true, window: false, heating: true, childLock: false, clockSet: true,
+    setPoint: 21.5, firmware: '1.4', paused: false, schedule: true, errors: 0,
+  });
+  // Off with the clock set is not 0, but it is off. Window open, child lock,
+  // paused, schedule off, an error flag.
+  const off = proto.parseThermostatStatus(Buffer.from([0x5a, 0x3c, 0xc4, 5, 0, 1, 4, 0x81, 0x80]));
+  assert.deepEqual([off.on, off.window, off.heating, off.childLock, off.clockSet, off.setPoint, off.paused, off.schedule, off.errors],
+    [false, true, false, true, true, 5, true, false, 0x80]);
+  assert.equal(proto.parseThermostatStatus(Buffer.alloc(8)), null);
+  assert.deepEqual(proto.parseThermostatTemperatures(Buffer.from([0x5a, 0x3c, 22, 3, 24, 0, 28, 0])),
+    { location: LOC, room: 22.3, floor: 24, floorLimit: 28 });
+  assert.equal(proto.parseThermostatTemperatures(Buffer.alloc(7)), null);
+  assert.deepEqual(proto.parseThermostatSettings(Buffer.from([0x5a, 0x3c, 0x45, 0x03, 20, 50, 0x23])), {
+    location: LOC, roomOffset: 0.5, floorOffset: -0.3, b4: 20, b5: 50, sensorType: 3, adaptive: false, windowDetection: true,
+  });
+  assert.equal(proto.parseThermostatSettings(Buffer.alloc(6)), null);
+  assert.deepEqual(proto.parseThermostatPresets(Buffer.from([0x5a, 0x3c, 21, 0, 16, 0, 5, 0])), { location: LOC, presets: [21, 16, 5] });
+  assert.equal(proto.parseThermostatPresets(Buffer.alloc(7)), null);
+});
+
+test('thermostat: FF04 and FF3C 00 every 5 min, FF3C 01 and 02 once, listening 10 s, 60 s once an hour; nothing that sets it', async () => {
+  const app = networkApp();
+  const c = clock();
+  const csr = new CsrNetwork(app, { now: c.now });
+  csr.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
+  csr.handleFrame(nameFrom(THERMO_ST, '@ST3C4D'));
+  csr.handleFrame(nameFrom(MESH_ID, '@SC1A2B'));
+  await readingsDone(app);
+  const to = (meshId) => app.sent.filter((s) => dstOf(s.plain) === meshId);
+  const hexTo = (meshId) => to(meshId).map((s) => s.plain.toString('hex').slice(4));
+  const first = ['ff045a3c', 'ff3c5a3c00', 'ff3c5a3c01', 'ff3c5a3c02'];
+  assert.deepEqual(hexTo(THERMO_MT), first);
+  assert.deepEqual(hexTo(THERMO_ST), first);
+  assert.deepEqual(to(THERMO_MT).map((s) => s.meta), [
+    { key: `csr:status:${THERMO_MT}`, listenMs: THERMOSTAT_LISTEN_MS },
+    { key: `csr:thermostat:${THERMO_MT}:0`, listenMs: THERMOSTAT_LISTEN_MS },
+    { key: `csr:thermostat:${THERMO_MT}:1`, listenMs: THERMOSTAT_LISTEN_MS },
+    { key: `csr:thermostat:${THERMO_MT}:2`, listenMs: THERMOSTAT_LISTEN_MS },
+  ]);
+  // The last request of the first readings listens long: the last in the queue.
+  assert.deepEqual(to(THERMO_ST).map((s) => s.meta.listenMs),
+    [THERMOSTAT_LISTEN_MS, THERMOSTAT_LISTEN_MS, THERMOSTAT_LISTEN_MS, THERMOSTAT_LONG_LISTEN_MS]);
+  assert.deepEqual([THERMOSTAT_LISTEN_MS, THERMOSTAT_LONG_LISTEN_MS, THERMOSTAT_LONG_EVERY_MS], [10 * 1000, 60 * 1000, 60 * 60 * 1000]);
+  assert.ok(app.logs.includes('[CSR] thermostat 0x0201: read every 5 min, nothing set'));
+  assert.ok(app.logs.includes('[CSR] FF3C 00 (temperatures) to thermostat 0x0201 loc=0x5a3c'));
+  assert.ok(app.logs.includes('[CSR] thermostats: the link listens 60 s after this request, for what they send by themselves'));
+
+  // An hour: twelve more readings, FF04 and FF3C 00 each time; the twelfth
+  // listens long again.
+  for (let round = 1; round <= 12; round += 1) {
+    assert.equal([...app.homey.pending.values()].filter((t) => t.ms === THERMOSTAT_EVERY_MS).length, 1);
+    c.t += THERMOSTAT_EVERY_MS;
+    app.homey.runMs(THERMOSTAT_EVERY_MS);
+    await readingsDone(app);
+  }
+  assert.equal(THERMOSTAT_EVERY_MS, 5 * 60 * 1000);
+  for (const meshId of [THERMO_MT, THERMO_ST]) {
+    const hex = hexTo(meshId);
+    assert.deepEqual([hex.filter((h) => h === 'ff045a3c').length, hex.filter((h) => h === 'ff3c5a3c00').length,
+      hex.filter((h) => h === 'ff3c5a3c01').length, hex.filter((h) => h === 'ff3c5a3c02').length, hex.length], [13, 13, 1, 1, 28]);
+  }
+  const long = app.sent.filter((s) => s.meta.listenMs === THERMOSTAT_LONG_LISTEN_MS);
+  assert.deepEqual(long.map((s) => s.plain.toString('hex')), ['0202ff3c5a3c02', '0202ff3c5a3c00']);
+  assert.equal(app.sent.indexOf(long[1]), app.sent.length - 1, 'the last request of the twelfth round');
+  assert.ok(app.sent.filter((s) => [THERMO_MT, THERMO_ST].includes(dstOf(s.plain)))
+    .every((s) => [THERMOSTAT_LISTEN_MS, THERMOSTAT_LONG_LISTEN_MS].includes(s.meta.listenMs)));
+  // Only requests to a thermostat, and nothing that sets one goes anywhere.
+  assert.ok(app.sent.filter((s) => [THERMO_MT, THERMO_ST].includes(dstOf(s.plain)))
+    .every((s) => [0xff04, 0xff3c].includes(opOf(s.plain))));
+  assert.deepEqual(app.sent.filter((s) => SETS_A_THERMOSTAT.includes(opOf(s.plain))), []);
+  // The Pill is asked once, as before.
+  assert.deepEqual(to(MESH_ID).map((s) => [s.plain.toString('hex'), s.meta]),
+    [['2301ff045a3c', { key: `csr:status:${MESH_ID}`, listenMs: STATUS_LISTEN_MS }]]);
+
+  csr.stop();
+  assert.equal([...app.homey.pending.values()].filter((t) => t.ms === THERMOSTAT_EVERY_MS).length, 0, 'stop ends the readings');
+});
+
+test('thermostat: its FF05 is logged as a thermostat\'s, not a dimmer\'s, and goes to no device; FF3D, FF5C and FF5D in words', () => {
+  const statuses = [];
+  const device = { applyCsrStatus: (...args) => statuses.push(args), applyCsrName() {}, getCsrMeshId: () => THERMO_MT };
+  const app = networkApp([device]);
+  const csr = new CsrNetwork(app);
+  csr.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
+  const answer = (opcode, bytes) => csr.handleFrame({ src: THERMO_MT, plain: ext(0x8000, opcode, bytes) });
+  answer(0xff05, [0x5a, 0x3c, 0xa1, 21, 5, 1, 4, 0x00, 0x00]);
+  answer(0xff3d, [0x5a, 0x3c, 22, 3, 24, 0, 28, 0]);
+  answer(0xff5c, [0x5a, 0x3c, 0x45, 0x03, 20, 50, 0x23]);
+  answer(0xff5d, [0x5a, 0x3c, 21, 0, 16, 0, 5, 0]);
+  answer(0xff42, [0x5a, 0x3c, 1, 0, 7]);
+  answer(0xff3d, [0x5a, 0x3c, 22]);
+  assert.deepEqual(statuses, []);
+  const lines = app.logs.filter((line) => line.startsWith('[CSR] EXT src=0x0201') && !line.includes('op=FF11'));
+  assert.deepEqual(lines, [
+    '[CSR] EXT src=0x0201 dst=0x8000 op=FF05 len=9 data=5a3ca1150501040000 thermostat on=1 heating=1 setPoint=21.5'
+      + ' window=0 childLock=0 clockSet=1 paused=0 schedule=1 errors=0x00 firmware=1.4 loc=0x5a3c',
+    '[CSR] EXT src=0x0201 dst=0x8000 op=FF3D len=8 data=5a3c160318001c00 thermostat room=22.3 floor=24.0 floorLimit=28.0 loc=0x5a3c',
+    '[CSR] EXT src=0x0201 dst=0x8000 op=FF5C len=7 data=5a3c4503143223 thermostat roomOffset=+0.5 floorOffset=-0.3 b4=20 b5=50'
+      + ' sensorType=3 adaptive=0 windowDetection=1 loc=0x5a3c',
+    '[CSR] EXT src=0x0201 dst=0x8000 op=FF5D len=8 data=5a3c150010000500 thermostat presets=21.0/16.0/5.0 loc=0x5a3c',
+    '[CSR] EXT src=0x0201 dst=0x8000 op=FF42 len=5 data=5a3c010007 thermostat',
+    '[CSR] EXT src=0x0201 dst=0x8000 op=FF3D len=3 data=5a3c16 thermostat',
+  ]);
+  // Before its FF11 a node is not known as a thermostat: its FF05 is read as before.
+  csr.handleFrame({ src: THERMO_ST, plain: ext(0x8000, 0xff05, [0x5a, 0x3c, 1, 40, 7]) });
+  assert.match(app.logs[app.logs.length - 1], /op=FF05 len=5 data=5a3c012807 on=1 level=40 loc=0x5a3c$/);
+});
+
+test('thermostat: a reading waits while a pairing scan has the radio, and is tried again 30 s later', async () => {
+  const app = networkApp();
+  app.bridge._scanPauses = 1;
+  const csr = new CsrNetwork(app);
+  csr.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
+  await tick();
+  await tick();
+  assert.equal(app.sent.length, 0);
+  assert.ok(app.logs.includes('[CSR] thermostat reading waits 30 s for the pairing scan'));
+  app.bridge._scanPauses = 0;
+  app.homey.runMs(THERMOSTAT_SCAN_RETRY_MS);
+  await readingsDone(app);
+  assert.deepEqual(app.sent.map((s) => s.plain.toString('hex')),
+    ['0102ff045a3c', '0102ff3c5a3c00', '0102ff3c5a3c01', '0102ff3c5a3c02']);
+});
+
+test('thermostat: a pairing search that begins in the middle of a reading holds its next request back until it is over', async () => {
+  const app = networkApp();
+  const csr = new CsrNetwork(app);
+  csr.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
+  await tick();
+  await tick();
+  assert.deepEqual(app.sent.map((s) => s.plain.toString('hex')), ['0102ff045a3c']);
+  app.bridge._scanPauses = 1; // the search begins
+  app.homey.runMs(THERMOSTAT_GAP_MS);
+  await tick();
+  await tick();
+  assert.equal(app.sent.length, 1, 'no FF3C while the scan has the radio');
+  app.homey.runMs(THERMOSTAT_SCAN_RETRY_MS); // still searching: it waits again
+  await tick();
+  await tick();
+  assert.equal(app.sent.length, 1);
+  assert.equal(app.logs.filter((line) => line === '[CSR] thermostat reading waits 30 s for the pairing scan').length, 2);
+  app.bridge._scanPauses = 0;
+  app.homey.runMs(THERMOSTAT_SCAN_RETRY_MS);
+  await readingsDone(app);
+  assert.deepEqual(app.sent.map((s) => s.plain.toString('hex')),
+    ['0102ff045a3c', '0102ff3c5a3c00', '0102ff3c5a3c01', '0102ff3c5a3c02']);
+});
+
+test('thermostat: the pause it waits for is the one MeshBridge.pauseForScan counts', async () => {
+  const real = bareBridge();
+  assert.equal(real._scanPauses, 0);
+  const end = await real.pauseForScan('pairing scan');
+  assert.equal(real._scanPauses, 1);
+  const app = networkApp();
+  Object.defineProperty(app.bridge, '_scanPauses', { get: () => real._scanPauses });
+  const csr = new CsrNetwork(app);
+  csr.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
+  await tick();
+  await tick();
+  assert.equal(app.sent.length, 0, 'not while the bridge pauses');
+  end('list answered');
+  assert.equal(real._scanPauses, 0);
+  app.homey.runMs(THERMOSTAT_SCAN_RETRY_MS);
+  await readingsDone(app);
+  assert.equal(app.sent.length, 4);
+});
+
+test('thermostat: a request whose answer has not come when the listening is over gets a line in the log', async () => {
+  const app = networkApp();
+  const csr = new CsrNetwork(app);
+  csr.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
+  await tick();
+  await tick();
+  csr.handleFrame({ src: THERMO_MT, plain: ext(0x8000, 0xff05, [0x5a, 0x3c, 0xa1, 21, 5, 1, 4, 0x00, 0x00]) });
+  await readingsDone(app);
+  csr.handleFrame({ src: THERMO_MT, plain: ext(0x8000, 0xff3d, [0x5a, 0x3c, 22, 3, 24, 0, 28, 0]) });
+  app.homey.runMs(THERMOSTAT_LISTEN_MS);
+  app.homey.runMs(THERMOSTAT_LONG_LISTEN_MS); // the last request of the first reading listens long
+  assert.deepEqual(app.logs.filter((line) => line.includes(': no FF')), [
+    '[CSR] thermostat 0x0201: no FF5C within 10 s of FF3C 01 (settings)',
+    '[CSR] thermostat 0x0201: no FF5D within 60 s of FF3C 02 (presets)',
+  ]);
+});
+
+test('thermostat: stopped in the middle of a reading, nothing more goes out', async () => {
+  const settle = async (app) => {
+    for (let i = 0; i < 20; i += 1) {
+      app.homey.runAll();
+      await tick();
+      await tick();
+    }
+  };
+  // Between two requests.
+  const app = networkApp();
+  const csr = new CsrNetwork(app);
+  csr.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
+  csr.handleFrame(nameFrom(THERMO_ST, '@ST3C4D'));
+  await tick();
+  await tick();
+  assert.equal(app.sent.length, 1);
+  csr.stop();
+  await settle(app);
+  assert.equal(app.sent.length, 1);
+  assert.equal(app.homey.pending.size, 0, 'no timer left');
+  assert.ok(!app.logs.some((line) => line.includes(': no FF')), 'and no line about a missing answer');
+
+  // As one thermostat's reading ends: the next one is not read.
+  const other = networkApp();
+  const csr2 = new CsrNetwork(other);
+  const send = other.bridge.send;
+  other.bridge.send = async (packet, meta) => {
+    const result = await send(packet, meta);
+    if (other.sent.length === 4) csr2.stop();
+    return result;
+  };
+  csr2.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
+  csr2.handleFrame(nameFrom(THERMO_ST, '@ST3C4D'));
+  await settle(other);
+  assert.deepEqual(other.sent.map((s) => dstOf(s.plain)), [THERMO_MT, THERMO_MT, THERMO_MT, THERMO_MT]);
+
+  // While a pairing scan holds the reading back.
+  const third = networkApp();
+  third.bridge._scanPauses = 1;
+  const csr3 = new CsrNetwork(third);
+  csr3.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
+  await tick();
+  await tick();
+  csr3.stop();
+  third.bridge._scanPauses = 0;
+  await settle(third);
+  assert.equal(third.sent.length, 0);
+});
+
+test('thermostat: a mesh id that names another product now is no longer read, and the log says so', async () => {
+  const app = networkApp();
+  const csr = new CsrNetwork(app);
+  csr.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
+  await readingsDone(app);
+  assert.equal(app.sent.length, 4);
+  csr.handleFrame(nameFrom(THERMO_MT, '@SC1A2B')); // a Pill has the mesh id now
+  assert.ok(app.logs.includes('[CSR] 0x0201 is @SC1A2B now, not a thermostat: no longer read'));
+  assert.equal(csr.isThermostat(THERMO_MT), false);
+  app.homey.runMs(THERMOSTAT_EVERY_MS);
+  await readingsDone(app);
+  // It is asked once, as any Pill, and gets no FF3C.
+  assert.deepEqual(app.sent.slice(4).map((s) => [s.plain.toString('hex'), s.meta.listenMs]),
+    [['0102ff045a3c', STATUS_LISTEN_MS]]);
+
+  // In the middle of a reading: the next request does not go.
+  const other = networkApp();
+  const csr2 = new CsrNetwork(other);
+  csr2.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
+  await tick();
+  await tick();
+  csr2.handleFrame(nameFrom(THERMO_MT, '@SC1A2B'));
+  await readingsDone(other);
+  assert.deepEqual(other.sent.map((s) => [s.plain.toString('hex'), s.meta.listenMs]),
+    [['0102ff045a3c', THERMOSTAT_LISTEN_MS], ['0102ff045a3c', STATUS_LISTEN_MS]]);
+});
+
+test('thermostat: a round that comes while the reading before is not done is skipped, and the log says so', async () => {
+  const app = networkApp();
+  const c = clock();
+  const send = app.bridge.send;
+  const held = [];
+  app.bridge.send = (packet, meta) => new Promise((resolve) => held.push(() => resolve(send(packet, meta))));
+  const csr = new CsrNetwork(app, { now: c.now });
+  csr.handleFrame(nameFrom(THERMO_MT, '@MT1A2B'));
+  csr.handleFrame(nameFrom(THERMO_ST, '@ST3C4D'));
+  await tick();
+  assert.equal(held.length, 1, 'the first FF04 is not delivered yet');
+  c.t += THERMOSTAT_EVERY_MS;
+  app.homey.runMs(THERMOSTAT_EVERY_MS);
+  await tick();
+  assert.ok(app.logs.includes('[CSR] thermostat round skipped: the reading that began 300 s ago is not done'));
+  assert.equal(held.length, 1, 'nothing more goes out');
+  // Delivered at last: both readings go on, and the next round is read.
+  app.bridge.send = send;
+  held.shift()();
+  await readingsDone(app);
+  const count = (hex) => app.sent.filter((s) => s.plain.toString('hex').slice(4) === hex).length;
+  assert.deepEqual([count('ff045a3c'), count('ff3c5a3c00'), count('ff3c5a3c01')], [2, 2, 2]);
+  c.t += THERMOSTAT_EVERY_MS;
+  app.homey.runMs(THERMOSTAT_EVERY_MS);
+  await readingsDone(app);
+  assert.deepEqual([count('ff045a3c'), count('ff3c5a3c00'), count('ff3c5a3c01')], [4, 4, 2]);
+  assert.equal(app.logs.filter((line) => line.includes('round skipped')).length, 1);
+});
+
+test('thermostat: no driver adds @MT or @ST, so no level goes to one; nothing in the app builds what sets one', () => {
+  for (const name of ['@MT1A2B', '@ST3C4D']) {
+    const product = csrProductForName(name);
+    assert.deepEqual([product.name, product.kind, csrDriverFor(product)], ['HeatReg Smart', 'thermostat', null]);
+    const found = laterFindings([{ localName: name, rssi: -60 }], [{ meshId: THERMO_MT, name, product, location: LOC }]);
+    for (const driverId of ['sg_mesh', 'sg_pill']) {
+      assert.deepEqual(withStates(found, driverId, new Set()).map((f) => f.state), ['notYet']);
+    }
+  }
+  // FF03 is built for the devices a driver added only, and FF3E, FF40 and
+  // FF42 nowhere.
+  const files = ['app.js', ...['lib', 'drivers/sg_mesh', 'drivers/sg_pill', 'drivers/sg_group']
+    .flatMap((dir) => fs.readdirSync(path.join(__dirname, '..', dir)).filter((f) => f.endsWith('.js')).map((f) => `${dir}/${f}`))];
+  const levelBuilders = files.filter((file) => /csrLevelData\(/.test(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'))
+    && file !== 'lib/sgProtocol.js');
+  assert.deepEqual(levelBuilders, ['lib/SGCsrDevice.js']);
+  for (const file of files) {
+    assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), /0xff,\s*0x(?:3e|40|42)\]/i, file);
+  }
+});
+
 // ---- the device
 
 function deviceApp(extra = {}) {
@@ -384,7 +727,8 @@ function deviceApp(extra = {}) {
   app.sharedLocation = () => app.shared;
   app.statusUnreadableText = () => null;
   app.csr = { names: 0, statuses: [], requestNames: async (options) => { app.csr.names += 1; app.csr.asked = options; return true; },
-    requestStatus: async (id, loc) => { app.csr.statuses.push([id, loc]); return true; } };
+    requestStatus: async (id, loc) => { app.csr.statuses.push([id, loc]); return true; },
+    isThermostat: (id) => (app.csr.thermostats || []).includes(id) };
   return Object.assign(app, extra);
 }
 
@@ -419,6 +763,20 @@ test('a command is one FF03 to the mesh id, with the location id and tid 1, 2 an
   assert.deepEqual(app.sent.map((s) => s.plain.toString('hex')),
     ['2301ff035a3c0128010000', '2301ff035a3c0000020000', '2301ff035a3c0137010000']);
   assert.deepEqual(app.sent.map((s) => s.meta.key), ['csr:291', 'csr:291', 'csr:291']);
+});
+
+test('no FF03 to a mesh id that the network now knows as a thermostat\'s, and the log says so', async () => {
+  const app = deviceApp();
+  const device = await csrDevice(app, { locationId: LOC });
+  app.csr.thermostats = [MESH_ID];
+  device._request(40);
+  await tick();
+  assert.equal(app.sent.length, 0);
+  assert.ok(device.logs.includes('command FF03 id=0x0123 level=40 not sent: that mesh id is a thermostat\'s now'));
+  app.csr.thermostats = [];
+  device._request(40);
+  await tick();
+  assert.deepEqual(app.sent.map((s) => s.plain.toString('hex')), ['2301ff035a3c0128010000']);
 });
 
 test('tid: 10.5 s after the last command it goes on, 11 s after it is 1 again (whole seconds)', async () => {
