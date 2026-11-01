@@ -1,0 +1,20 @@
+{
+  "type": "boolean",
+  "title": {
+    "en": "Heating",
+    "no": "Varme"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insights": true,
+  "insightsTitleTrue": {
+    "en": "Started heating",
+    "no": "Begynte å varme"
+  },
+  "insightsTitleFalse": {
+    "en": "Stopped heating",
+    "no": "Sluttet å varme"
+  },
+  "icon": "/assets/capabilities/sg_heating.svg"
+}

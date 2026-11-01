@@ -25,6 +25,7 @@ class FakeDevice {
   getStoreValue(key) { return this._store[key]; }
   async setStoreValue(key, value) { this._store[key] = value; }
   getSettings() { return this._settings; }
+  async setSettings(settings) { Object.assign(this._settings, settings); }
   getData() { return this._data; }
   getName() { return this._name; }
   hasCapability(capability) { return ['onoff', 'dim', 'measure_signal_strength', 'sg_connection'].includes(capability); }
@@ -39,6 +40,7 @@ class FakeDevice {
   async setWarning(text) { this.warning = text; }
   async unsetWarning() { this.warning = null; }
   registerMultipleCapabilityListener() {}
+  registerCapabilityListener() {}
   log(...args) { this.logs.push(args.join(' ')); }
   error(...args) { this.errors.push(args.join(' ')); }
 }

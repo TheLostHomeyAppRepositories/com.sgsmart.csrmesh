@@ -398,6 +398,250 @@
           ]
         }
       ]
+    },
+    {
+      "name": {
+        "en": "HeatReg Smart",
+        "no": "HeatReg Smart"
+      },
+      "class": "thermostat",
+      "capabilities": [
+        "target_temperature",
+        "measure_temperature",
+        "measure_temperature.floor",
+        "onoff",
+        "thermostat_mode",
+        "sg_heat_preset",
+        "sg_heating",
+        "measure_power",
+        "alarm_problem",
+        "sg_window_open",
+        "sg_floor_limit"
+      ],
+      "capabilitiesOptions": {
+        "target_temperature": {
+          "min": 5,
+          "max": 35,
+          "step": 0.5,
+          "decimals": 1
+        },
+        "measure_temperature.floor": {
+          "title": {
+            "en": "Floor temperature",
+            "no": "Gulvtemperatur"
+          }
+        },
+        "thermostat_mode": {
+          "uiComponent": null,
+          "values": [
+            {
+              "id": "heat",
+              "title": {
+                "en": "Heat",
+                "no": "Varme"
+              }
+            },
+            {
+              "id": "off",
+              "title": {
+                "en": "Off",
+                "no": "Av"
+              }
+            }
+          ]
+        },
+        "measure_power": {
+          "approximated": true
+        },
+        "sg_heating": {
+          "titleTrue": {
+            "en": "Heating",
+            "no": "Varmer"
+          },
+          "titleFalse": {
+            "en": "Not heating",
+            "no": "Varmer ikke"
+          }
+        },
+        "sg_window_open": {
+          "titleTrue": {
+            "en": "Active",
+            "no": "Aktiv"
+          },
+          "titleFalse": {
+            "en": "Not active",
+            "no": "Ikke aktiv"
+          }
+        },
+        "sg_floor_limit": {
+          "titleTrue": {
+            "en": "Reached",
+            "no": "Nådd"
+          },
+          "titleFalse": {
+            "en": "Not reached",
+            "no": "Ikke nådd"
+          }
+        }
+      },
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "ble"
+      ],
+      "images": {
+        "small": "/drivers/sg_thermostat/assets/images/small.png",
+        "large": "/drivers/sg_thermostat/assets/images/large.png",
+        "xlarge": "/drivers/sg_thermostat/assets/images/xlarge.png"
+      },
+      "pair": [
+        {
+          "id": "guide",
+          "options": {
+            "duration": "durationPill"
+          },
+          "navigation": {
+            "next": "loading"
+          }
+        },
+        {
+          "id": "loading",
+          "template": "loading",
+          "navigation": {
+            "next": "list_devices"
+          }
+        },
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "prev": "guide",
+            "next": "add_devices"
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "sg_thermostat",
+      "settings": [
+        {
+          "id": "network",
+          "type": "group",
+          "label": {
+            "en": "CSRmesh network",
+            "no": "CSRmesh-nettverk"
+          },
+          "children": [
+            {
+              "id": "passphrase",
+              "type": "text",
+              "value": "1234",
+              "label": {
+                "en": "Network passphrase",
+                "no": "Nettverkspassord"
+              },
+              "hint": {
+                "en": "The CSRmesh passphrase for your installation. It is 1234, unless \"Network Isolation\" is on in the SG app: turn it off there, which sets it back to 1234. Then all devices must be set up again in the SG app. If you have your home's password, you can enter it here instead: the same one in every dimmer.",
+                "no": "CSRmesh-passordet for installasjonen din. Det er 1234, med mindre \"Nettverksisolasjon (Network Isolation)\" er slått på i SG-appen: slå den av der, så blir det 1234 igjen. Da må alle enhetene settes opp på nytt i SG-appen. Har du passordet for hjemmet ditt, kan du i stedet skrive det inn her: det samme i hver dimmer."
+              }
+            },
+            {
+              "id": "netkey_hex",
+              "type": "text",
+              "value": "",
+              "label": {
+                "en": "Raw network key (advanced)",
+                "no": "Rå nettverksnøkkel (avansert)"
+              },
+              "hint": {
+                "en": "Optional. 32 hex characters = the 16-byte CSRmesh network key. Overrides the passphrase when set.",
+                "no": "Valgfritt. 32 hex-tegn = 16-byte CSRmesh-nettverksnøkkel. Overstyrer passordet når den er satt."
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "Thermostat",
+            "no": "Termostat"
+          },
+          "children": [
+            {
+              "id": "control_from_homey",
+              "type": "checkbox",
+              "value": true,
+              "label": {
+                "en": "Control from Homey (being tried out)",
+                "no": "Styr fra Homey (under utprøving)"
+              },
+              "hint": {
+                "en": "On (default): Homey sends the target temperature, on and off and the preset to the thermostat, once for each change. Control from Homey is new and not yet tried with a real HeatReg Smart. Turn it off if something does not work as it should: Homey then only reads the thermostat, and changes made in Homey are refused.",
+                "no": "På (standard): Homey sender ønsket temperatur, av og på og forhåndsinnstillingen til termostaten, én gang per endring. Styringen fra Homey er ny og ennå ikke prøvd med en ekte HeatReg Smart. Slå den av hvis noe ikke virker som det skal: da leser Homey bare termostaten, og endringer i Homey avvises."
+              }
+            },
+            {
+              "id": "sensor",
+              "type": "dropdown",
+              "value": "floor",
+              "label": {
+                "en": "The sensor the thermostat goes by",
+                "no": "Føleren termostaten styrer etter"
+              },
+              "values": [
+                {
+                  "id": "floor",
+                  "label": {
+                    "en": "Floor",
+                    "no": "Gulv"
+                  }
+                },
+                {
+                  "id": "room",
+                  "label": {
+                    "en": "Room",
+                    "no": "Rom"
+                  }
+                },
+                {
+                  "id": "roomFloor",
+                  "label": {
+                    "en": "Room, with a floor limit",
+                    "no": "Rom med gulvgrense"
+                  }
+                }
+              ],
+              "hint": {
+                "en": "Choose the sensor the thermostat was set up with in the SG app. It decides which faults show and whether the floor limit applies. Homey can't read it, and doesn't change the thermostat.",
+                "no": "Velg samme føler som termostaten ble satt opp med i SG-appen. Den avgjør hvilke feil som vises og om gulvgrensen gjelder. Homey kan ikke lese den, og endrer ikke termostaten."
+              }
+            },
+            {
+              "id": "heating_cable_power",
+              "type": "number",
+              "value": 0,
+              "min": 0,
+              "max": 5000,
+              "step": 10,
+              "units": {
+                "en": "W",
+                "no": "W"
+              },
+              "label": {
+                "en": "Heating cable power (W)",
+                "no": "Varmekabelens effekt (W)"
+              },
+              "hint": {
+                "en": "From the cable's label or the installation papers. Homey shows this as the power while the thermostat heats. With 0, no power is shown.",
+                "no": "Fra merket på kabelen eller installasjonspapirene. Homey viser dette som effekten mens termostaten varmer. Står den på 0, vises ingen effekt."
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "flow": {
@@ -419,6 +663,140 @@
             "filter": "driver_id=sg_plug"
           }
         ]
+      },
+      {
+        "id": "measure_temperature.floor_changed",
+        "title": {
+          "en": "The floor temperature changed",
+          "no": "Gulvtemperaturen endret seg"
+        },
+        "tokens": [
+          {
+            "name": "measure_temperature.floor",
+            "type": "number",
+            "title": {
+              "en": "Floor temperature",
+              "no": "Gulvtemperatur"
+            },
+            "example": 24
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_heat_preset_changed",
+        "title": {
+          "en": "The preset changed",
+          "no": "Forhåndsinnstillingen ble endret"
+        },
+        "tokens": [
+          {
+            "name": "sg_heat_preset",
+            "type": "string",
+            "title": {
+              "en": "Preset",
+              "no": "Forhåndsinnstilling"
+            },
+            "example": "comfort"
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_heating_true",
+        "title": {
+          "en": "Started heating",
+          "no": "Begynte å varme"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_heating_false",
+        "title": {
+          "en": "Stopped heating",
+          "no": "Sluttet å varme"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_window_open_true",
+        "title": {
+          "en": "The open window function started",
+          "no": "Åpent vindu-funksjonen slo inn"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_window_open_false",
+        "title": {
+          "en": "The open window function ended",
+          "no": "Åpent vindu-funksjonen er ferdig"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_floor_limit_true",
+        "title": {
+          "en": "The floor limit was reached",
+          "no": "Gulvgrensen ble nådd"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_floor_limit_false",
+        "title": {
+          "en": "Floor limit no longer reached",
+          "no": "Gulvgrensen er ikke lenger nådd"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
       }
     ],
     "conditions": [
@@ -433,6 +811,83 @@
             "type": "device",
             "name": "device",
             "filter": "driver_id=sg_plug"
+          }
+        ]
+      },
+      {
+        "id": "sg_heating_is",
+        "title": {
+          "en": "!{{Is|Is not}} heating",
+          "no": "!{{Varmer|Varmer ikke}}"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_window_open_is",
+        "title": {
+          "en": "The open window function !{{is|is not}} active",
+          "no": "Åpent vindu-funksjonen !{{er|er ikke}} aktiv"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          }
+        ]
+      },
+      {
+        "id": "sg_heat_preset_is",
+        "title": {
+          "en": "The preset !{{is|is not}} ...",
+          "no": "Forhåndsinnstillingen !{{er|er ikke}} ..."
+        },
+        "titleFormatted": {
+          "en": "The preset !{{is|is not}} [[preset]]",
+          "no": "Forhåndsinnstillingen !{{er|er ikke}} [[preset]]"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          },
+          {
+            "type": "dropdown",
+            "name": "preset",
+            "title": {
+              "en": "Preset",
+              "no": "Forhåndsinnstilling"
+            },
+            "values": [
+              {
+                "id": "comfort",
+                "label": {
+                  "en": "Comfort",
+                  "no": "Komfort"
+                }
+              },
+              {
+                "id": "eco",
+                "label": {
+                  "en": "Eco",
+                  "no": "Eco"
+                }
+              },
+              {
+                "id": "min",
+                "label": {
+                  "en": "Min",
+                  "no": "Min"
+                }
+              }
+            ]
           }
         ]
       }
@@ -525,6 +980,59 @@
             "filter": "driver_id=sg_plug"
           }
         ]
+      },
+      {
+        "id": "sg_heat_preset_set",
+        "title": {
+          "en": "Choose the preset ...",
+          "no": "Velg forhåndsinnstillingen ..."
+        },
+        "titleFormatted": {
+          "en": "Choose the preset [[preset]]",
+          "no": "Velg forhåndsinnstillingen [[preset]]"
+        },
+        "hint": {
+          "en": "Only with \"Control from Homey\" on in the device's settings.",
+          "no": "Bare med \"Styr fra Homey\" på i enhetens innstillinger."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat"
+          },
+          {
+            "type": "dropdown",
+            "name": "preset",
+            "title": {
+              "en": "Preset",
+              "no": "Forhåndsinnstilling"
+            },
+            "values": [
+              {
+                "id": "comfort",
+                "label": {
+                  "en": "Comfort",
+                  "no": "Komfort"
+                }
+              },
+              {
+                "id": "eco",
+                "label": {
+                  "en": "Eco",
+                  "no": "Eco"
+                }
+              },
+              {
+                "id": "min",
+                "label": {
+                  "en": "Min",
+                  "no": "Min"
+                }
+              }
+            ]
+          }
+        ]
       }
     ]
   },
@@ -540,6 +1048,100 @@
       "uiComponent": "sensor",
       "insights": false,
       "icon": "/assets/capabilities/sg_connection.svg"
+    },
+    "sg_floor_limit": {
+      "type": "boolean",
+      "title": {
+        "en": "Floor limit",
+        "no": "Gulvgrense"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "insightsTitleTrue": {
+        "en": "The floor limit was reached",
+        "no": "Gulvgrensen ble nådd"
+      },
+      "insightsTitleFalse": {
+        "en": "Floor limit no longer reached",
+        "no": "Gulvgrensen er ikke lenger nådd"
+      },
+      "icon": "/assets/capabilities/sg_floor_limit.svg"
+    },
+    "sg_heat_preset": {
+      "type": "enum",
+      "title": {
+        "en": "Preset",
+        "no": "Forhåndsinnstilling"
+      },
+      "values": [
+        {
+          "id": "comfort",
+          "title": {
+            "en": "Comfort",
+            "no": "Komfort"
+          }
+        },
+        {
+          "id": "eco",
+          "title": {
+            "en": "Eco",
+            "no": "Eco"
+          }
+        },
+        {
+          "id": "min",
+          "title": {
+            "en": "Min",
+            "no": "Min"
+          }
+        }
+      ],
+      "getable": true,
+      "setable": true,
+      "uiComponent": "picker",
+      "insights": false
+    },
+    "sg_heating": {
+      "type": "boolean",
+      "title": {
+        "en": "Heating",
+        "no": "Varme"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "insightsTitleTrue": {
+        "en": "Started heating",
+        "no": "Begynte å varme"
+      },
+      "insightsTitleFalse": {
+        "en": "Stopped heating",
+        "no": "Sluttet å varme"
+      },
+      "icon": "/assets/capabilities/sg_heating.svg"
+    },
+    "sg_window_open": {
+      "type": "boolean",
+      "title": {
+        "en": "Open window function",
+        "no": "Åpent vindu-funksjonen"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "insightsTitleTrue": {
+        "en": "The open window function started",
+        "no": "Åpent vindu-funksjonen slo inn"
+      },
+      "insightsTitleFalse": {
+        "en": "The open window function ended",
+        "no": "Åpent vindu-funksjonen er ferdig"
+      },
+      "icon": "/assets/capabilities/sg_window_open.svg"
     }
   }
 }

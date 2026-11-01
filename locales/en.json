@@ -1,6 +1,6 @@
 {
   "pair": {
-    "noDimmersFound": "No dimmers found. The app supports LEDDim Smart of every generation, but not SG Smart 3.0. Close the SG Smart app on your phone and try again closer to a dimmer. If that does not help, send a diagnostics report right away: Settings, Apps, SG LEDDim.",
+    "noDimmersFound": "No dimmers found. The app supports LEDDim Smart of every generation, but not SG Smart 3.0. Close the SG app on your phone and try again closer to a dimmer. If that does not help, send a diagnostics report right away: Settings, Apps, SG LEDDim.",
     "group": "Group",
     "members": {
       "title": "Dimmers in this group",
@@ -18,13 +18,16 @@
       "noPill": "No Pill found.",
       "noPillButDimmer": "No Pill found, but found __products__. Go back and select \"LEDDim Smart\" to add them.",
       "noPlug": "No Smart Plug or Smart Socket found.",
+      "noThermostat": "No HeatReg Smart found.",
       "notYet": "Found __products__, which cannot be added yet.",
       "goToDimmer": "Found __products__. Go back and select \"LEDDim Smart\" to add them.",
       "goToPill": "Found __products__. Go back and select \"LEDDim Smart Pill\" to add them.",
-      "goToPlug": "Found __products__. Go back and select \"Smart Plug and Smart Socket\" to add them."
+      "goToPlug": "Found __products__. Go back and select \"Smart Plug and Smart Socket\" to add them.",
+      "goToThermostat": "Found __products__. Go back and select \"HeatReg Smart\" to add them."
     },
     "guide": {
       "title": "Before you search",
+      "setupFirst": "Set up the device in the SG app on your phone first. Homey does not add new devices to the network.",
       "closeApp": "Close the SG app on phones and tablets.",
       "near": "Keep Homey close to a dimmer or device.",
       "password": "The password is 1234 unless you changed it in the SG app.",
@@ -38,7 +41,7 @@
     },
     "keepConnected": {
       "label": "Keep dimmers connected",
-      "hint": "Faster control, and changes made at the wall switch appear immediately. Only works with first-generation LEDDim Smart (@NDxxxx). If you only have one such dimmer, the SG Smart app on your phone cannot reach it while this setting is on."
+      "hint": "Faster control, and changes made at the wall switch appear immediately. Only works with first-generation LEDDim Smart (@NDxxxx). If you only have one such dimmer, the SG app on your phone cannot reach it while this setting is on."
     },
     "signal": {
       "title": "Signal to Homey",
@@ -49,6 +52,7 @@
       "rotary": "First generation (@NDxxxx) is stable. Later generations, including TW, Master and 400 2-pole, are being tested.",
       "pill": ", including Micro, TW and Smart Pill ON-OFF: being tested.",
       "plug": " and Smart Socket: being tested.",
+      "thermostat": ": being tested. Control from Homey is new, on by default, and can be turned off.",
       "sg3": ", the products with 3.0 in the name, is not supported yet.",
       "other": "Other SG devices, such as DIN, Push, Floor and Pill DALI, are not supported yet.",
       "report": "Something not working? Report it in the forum thread."
@@ -83,9 +87,21 @@
       "directGood": "Direct, good",
       "directWeak": "Direct, weak",
       "indirect": "Indirect"
-    }
+    },
+    "badMeshId": "This device has no valid mesh id. Delete it and add it again."
   },
   "notification": {
     "passwordWrong": "Possibly wrong network password in SG LEDDim. Check Network Isolation in the SG app, or enter the correct password in the settings for each dimmer."
+  },
+  "thermostat": {
+    "controlOff": "Control from Homey is off for this thermostat. Turn it on in its settings.",
+    "waitingForStatus": "Waiting for the thermostat's first status.",
+    "fault": {
+      "EEE": "The thermostat reports a fault (EEE).",
+      "FFF": "Floor sensor fault (FFF). Check the floor sensor.",
+      "E2": "Room sensor fault (E2).",
+      "E1": "No reading from the floor sensor (E1).",
+      "L0": "The thermostat reads 0 °C (L0)."
+    }
   }
 }

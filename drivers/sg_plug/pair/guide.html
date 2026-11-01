@@ -1,14 +1,14 @@
 <style>
   /* Laid out like Homey's own learn mode page: a line drawing on top, the
      instruction under it, all centred (Athom: wireless/zigbee.md, learnmode),
-     here with the three points numbered and how long the search takes. Homey's frame round the view was about
+     here with the four points numbered and how long the search takes. Homey's frame round the view was about
      310 px high in the mobile app, so the picture, at most 200 px, gives way to
      the points, and the whole guide shows without scrolling, with "Continue"
      below. Its room is kept from the start, so nothing moves when it loads.
      Text is Homey's own (Athom: advanced/custom-views/html-and-css-styling.md). */
   .sg-guide { display: flex; flex-direction: column; align-items: center; }
   .sg-picture { display: flex; justify-content: center; align-items: center; width: 100%;
-    height: clamp(100px, calc(100vh - 185px), 200px); margin-bottom: 8px; }
+    height: clamp(80px, calc(100vh - 229px), 200px); margin-bottom: 8px; }
   .sg-picture[hidden] { display: none; }
   .sg-picture img { display: block; max-height: 100%; max-width: 100%; }
   .sg-steps { list-style: none; margin: 0; padding: 0; max-width: 340px; counter-reset: step; }
@@ -25,6 +25,7 @@
     <img src="../assets/guide/guide.png" alt="">
   </div>
   <ol class="sg-steps">
+    <li data-step="setupFirst"></li>
     <li data-step="closeApp"></li>
     <li data-step="near"></li>
     <li data-step="password"></li>

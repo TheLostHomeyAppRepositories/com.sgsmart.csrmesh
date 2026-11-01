@@ -1,0 +1,127 @@
+{
+  "name": {
+    "en": "HeatReg Smart",
+    "no": "HeatReg Smart"
+  },
+  "class": "thermostat",
+  "capabilities": [
+    "target_temperature",
+    "measure_temperature",
+    "measure_temperature.floor",
+    "onoff",
+    "thermostat_mode",
+    "sg_heat_preset",
+    "sg_heating",
+    "measure_power",
+    "alarm_problem",
+    "sg_window_open",
+    "sg_floor_limit"
+  ],
+  "capabilitiesOptions": {
+    "target_temperature": {
+      "min": 5,
+      "max": 35,
+      "step": 0.5,
+      "decimals": 1
+    },
+    "measure_temperature.floor": {
+      "title": {
+        "en": "Floor temperature",
+        "no": "Gulvtemperatur"
+      }
+    },
+    "thermostat_mode": {
+      "uiComponent": null,
+      "values": [
+        {
+          "id": "heat",
+          "title": {
+            "en": "Heat",
+            "no": "Varme"
+          }
+        },
+        {
+          "id": "off",
+          "title": {
+            "en": "Off",
+            "no": "Av"
+          }
+        }
+      ]
+    },
+    "measure_power": {
+      "approximated": true
+    },
+    "sg_heating": {
+      "titleTrue": {
+        "en": "Heating",
+        "no": "Varmer"
+      },
+      "titleFalse": {
+        "en": "Not heating",
+        "no": "Varmer ikke"
+      }
+    },
+    "sg_window_open": {
+      "titleTrue": {
+        "en": "Active",
+        "no": "Aktiv"
+      },
+      "titleFalse": {
+        "en": "Not active",
+        "no": "Ikke aktiv"
+      }
+    },
+    "sg_floor_limit": {
+      "titleTrue": {
+        "en": "Reached",
+        "no": "Nådd"
+      },
+      "titleFalse": {
+        "en": "Not reached",
+        "no": "Ikke nådd"
+      }
+    }
+  },
+  "platforms": [
+    "local"
+  ],
+  "connectivity": [
+    "ble"
+  ],
+  "images": {
+    "small": "{{driverAssetsPath}}/images/small.png",
+    "large": "{{driverAssetsPath}}/images/large.png",
+    "xlarge": "{{driverAssetsPath}}/images/xlarge.png"
+  },
+  "pair": [
+    {
+      "id": "guide",
+      "options": {
+        "duration": "durationPill"
+      },
+      "navigation": {
+        "next": "loading"
+      }
+    },
+    {
+      "id": "loading",
+      "template": "loading",
+      "navigation": {
+        "next": "list_devices"
+      }
+    },
+    {
+      "id": "list_devices",
+      "template": "list_devices",
+      "navigation": {
+        "prev": "guide",
+        "next": "add_devices"
+      }
+    },
+    {
+      "id": "add_devices",
+      "template": "add_devices"
+    }
+  ]
+}

@@ -21,6 +21,7 @@ const MeshBridge = require('../lib/MeshBridge');
 const SGCsrDevice = require('../lib/SGCsrDevice');
 const SGMeshDevice = require('../lib/SGDeviceBase');
 const SGPlugDevice = require('../drivers/sg_plug/device');
+const SGThermostatDevice = require('../lib/SGThermostatDevice');
 const { loadFakes } = require('../lib/fakeDevices');
 const { REFUSED } = require('../lib/fake/bridge');
 const { ROOT, buildFiles } = require('./helpers/build-files');
@@ -118,7 +119,7 @@ async function runAllTimers(homey, rounds = 6) {
   for (let j = 0; j < 5; j += 1) await tick();
 }
 
-test('nothing the app does sends them: names, statuses, thermostat readings, lights, plugs and their countdown, a first generation dimmer and its heartbeat', async () => {
+test('nothing the app does sends them: names, statuses, a thermostat read and set, lights, plugs and their countdown, a first generation dimmer and its heartbeat', async () => {
   const { app, sent } = recordingApp();
   const device = (Class, store, dim) => {
     const d = new Class({
@@ -131,16 +132,25 @@ test('nothing the app does sends them: names, statuses, thermostat readings, lig
   const light = device(SGCsrDevice, { meshId: 0x0123, prefix: '@SW', kind: 'dimmable', tunableWhite: true }, true);
   const onOff = device(SGCsrDevice, { meshId: 0x0124, prefix: '@SE', kind: 'onoff' }, false);
   const plug = device(SGPlugDevice, { meshId: 0x0125, prefix: '@GB', kind: 'onoff' }, false);
-  app._devices = () => [light, onOff, plug];
-  for (const d of [light, onOff, plug]) await d.onInit();
+  // A thermostat added in Homey, with control from Homey on.
+  const thermostat = new SGThermostatDevice({
+    homey: app.homey, store: { meshId: 0x0126, prefix: '@MT', kind: 'thermostat', locationId: LOC },
+    settings: { passphrase: 'test-only-pass', control_from_homey: true }, data: { id: '@MT7A8B' }, name: 'thermostat',
+  });
+  thermostat.hasCapability = () => true;
+  app._devices = () => [light, onOff, plug, thermostat];
+  for (const d of [light, onOff, plug, thermostat]) await d.onInit();
 
   // FF10 waits between its variants: the timers below let it go on.
   const names = app.csr.requestNames({ listenMs: 1000 });
   await app.csr.requestStatus(0x0123, LOC);
   await app.csr.requestAllStatus();
-  // A thermostat found: read, also its settings and presets.
+  // The thermostat: read, also its settings and presets, and set from Homey.
   const name = Buffer.from([LOC >> 8, LOC & 0xff, ...Buffer.from('MT7A8B', 'latin1'), 0]);
   app.csr.handleFrame({ src: 0x0126, plain: Buffer.concat([Buffer.from([0x00, 0x80, 0xff, 0x11]), name]) });
+  await thermostat._setPoint(22.5);
+  await thermostat._power(false, 'onoff');
+  for (const preset of ['comfort', 'eco', 'min']) await thermostat._preset(preset);
   for (const level of [0, 1, 40, 100]) light._request(level);
   onOff._request(100);
   onOff._request(0);
@@ -175,7 +185,7 @@ test('nothing the app does sends them: names, statuses, thermostat readings, lig
   sent.push(decryptPayload(KEY, heartbeat.subarray(0, 3), heartbeat.subarray(3, 5), heartbeat.subarray(5, heartbeat.length - 9)));
 
   const opcodes = new Set(sent.map(opcodeOf));
-  for (const expected of ['ff10', 'ff04', 'ffff', 'ff3c', 'ff03', '73a0', '73cc']) assert.ok(opcodes.has(expected), `${expected} was sent`);
+  for (const expected of ['ff10', 'ff04', 'ffff', 'ff3c', 'ff03', 'ff3e', 'ff42', '73a0', '73cc']) assert.ok(opcodes.has(expected), `${expected} was sent`);
   assert.deepEqual(sent.filter((plain) => NEVER.includes(opcodeOf(plain))).map(opcodeOf), []);
   assert.ok(sent.length >= 15, `${sent.length} sent`);
 });

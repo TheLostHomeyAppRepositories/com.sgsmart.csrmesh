@@ -1,0 +1,192 @@
+{
+  "triggers": [
+    {
+      "id": "measure_temperature.floor_changed",
+      "title": {
+        "en": "The floor temperature changed",
+        "no": "Gulvtemperaturen endret seg"
+      },
+      "tokens": [
+        {
+          "name": "measure_temperature.floor",
+          "type": "number",
+          "title": {
+            "en": "Floor temperature",
+            "no": "Gulvtemperatur"
+          },
+          "example": 24
+        }
+      ]
+    },
+    {
+      "id": "sg_heat_preset_changed",
+      "title": {
+        "en": "The preset changed",
+        "no": "Forhåndsinnstillingen ble endret"
+      },
+      "tokens": [
+        {
+          "name": "sg_heat_preset",
+          "type": "string",
+          "title": {
+            "en": "Preset",
+            "no": "Forhåndsinnstilling"
+          },
+          "example": "comfort"
+        }
+      ]
+    },
+    {
+      "id": "sg_heating_true",
+      "title": {
+        "en": "Started heating",
+        "no": "Begynte å varme"
+      }
+    },
+    {
+      "id": "sg_heating_false",
+      "title": {
+        "en": "Stopped heating",
+        "no": "Sluttet å varme"
+      }
+    },
+    {
+      "id": "sg_window_open_true",
+      "title": {
+        "en": "The open window function started",
+        "no": "Åpent vindu-funksjonen slo inn"
+      }
+    },
+    {
+      "id": "sg_window_open_false",
+      "title": {
+        "en": "The open window function ended",
+        "no": "Åpent vindu-funksjonen er ferdig"
+      }
+    },
+    {
+      "id": "sg_floor_limit_true",
+      "title": {
+        "en": "The floor limit was reached",
+        "no": "Gulvgrensen ble nådd"
+      }
+    },
+    {
+      "id": "sg_floor_limit_false",
+      "title": {
+        "en": "Floor limit no longer reached",
+        "no": "Gulvgrensen er ikke lenger nådd"
+      }
+    }
+  ],
+  "conditions": [
+    {
+      "id": "sg_heating_is",
+      "title": {
+        "en": "!{{Is|Is not}} heating",
+        "no": "!{{Varmer|Varmer ikke}}"
+      }
+    },
+    {
+      "id": "sg_window_open_is",
+      "title": {
+        "en": "The open window function !{{is|is not}} active",
+        "no": "Åpent vindu-funksjonen !{{er|er ikke}} aktiv"
+      }
+    },
+    {
+      "id": "sg_heat_preset_is",
+      "title": {
+        "en": "The preset !{{is|is not}} ...",
+        "no": "Forhåndsinnstillingen !{{er|er ikke}} ..."
+      },
+      "titleFormatted": {
+        "en": "The preset !{{is|is not}} [[preset]]",
+        "no": "Forhåndsinnstillingen !{{er|er ikke}} [[preset]]"
+      },
+      "args": [
+        {
+          "type": "dropdown",
+          "name": "preset",
+          "title": {
+            "en": "Preset",
+            "no": "Forhåndsinnstilling"
+          },
+          "values": [
+            {
+              "id": "comfort",
+              "label": {
+                "en": "Comfort",
+                "no": "Komfort"
+              }
+            },
+            {
+              "id": "eco",
+              "label": {
+                "en": "Eco",
+                "no": "Eco"
+              }
+            },
+            {
+              "id": "min",
+              "label": {
+                "en": "Min",
+                "no": "Min"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "sg_heat_preset_set",
+      "title": {
+        "en": "Choose the preset ...",
+        "no": "Velg forhåndsinnstillingen ..."
+      },
+      "titleFormatted": {
+        "en": "Choose the preset [[preset]]",
+        "no": "Velg forhåndsinnstillingen [[preset]]"
+      },
+      "hint": {
+        "en": "Only with \"Control from Homey\" on in the device's settings.",
+        "no": "Bare med \"Styr fra Homey\" på i enhetens innstillinger."
+      },
+      "args": [
+        {
+          "type": "dropdown",
+          "name": "preset",
+          "title": {
+            "en": "Preset",
+            "no": "Forhåndsinnstilling"
+          },
+          "values": [
+            {
+              "id": "comfort",
+              "label": {
+                "en": "Comfort",
+                "no": "Komfort"
+              }
+            },
+            {
+              "id": "eco",
+              "label": {
+                "en": "Eco",
+                "no": "Eco"
+              }
+            },
+            {
+              "id": "min",
+              "label": {
+                "en": "Min",
+                "no": "Min"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

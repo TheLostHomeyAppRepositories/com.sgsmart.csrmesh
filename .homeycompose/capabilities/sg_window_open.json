@@ -1,0 +1,20 @@
+{
+  "type": "boolean",
+  "title": {
+    "en": "Open window function",
+    "no": "Åpent vindu-funksjonen"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insights": true,
+  "insightsTitleTrue": {
+    "en": "The open window function started",
+    "no": "Åpent vindu-funksjonen slo inn"
+  },
+  "insightsTitleFalse": {
+    "en": "The open window function ended",
+    "no": "Åpent vindu-funksjonen er ferdig"
+  },
+  "icon": "/assets/capabilities/sg_window_open.svg"
+}

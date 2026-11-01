@@ -1,0 +1,34 @@
+{
+  "type": "enum",
+  "title": {
+    "en": "Preset",
+    "no": "Forhåndsinnstilling"
+  },
+  "values": [
+    {
+      "id": "comfort",
+      "title": {
+        "en": "Comfort",
+        "no": "Komfort"
+      }
+    },
+    {
+      "id": "eco",
+      "title": {
+        "en": "Eco",
+        "no": "Eco"
+      }
+    },
+    {
+      "id": "min",
+      "title": {
+        "en": "Min",
+        "no": "Min"
+      }
+    }
+  ],
+  "getable": true,
+  "setable": true,
+  "uiComponent": "picker",
+  "insights": false
+}

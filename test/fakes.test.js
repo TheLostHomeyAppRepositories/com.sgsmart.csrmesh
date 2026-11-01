@@ -23,6 +23,8 @@ const SGMeshDriver = require('../drivers/sg_mesh/driver');
 const SGPillDriver = require('../drivers/sg_pill/driver');
 const SGPlugDriver = require('../drivers/sg_plug/driver');
 const SGPlugDevice = require('../drivers/sg_plug/device');
+const SGThermostatDriver = require('../drivers/sg_thermostat/driver');
+const SGThermostatDevice = require('../lib/SGThermostatDevice');
 const SGSmartApp = require('../app');
 const { FAKE_ID_PREFIX, isFakeDevice, loadFakes } = require('../lib/fakeDevices');
 const { buildFiles } = require('./helpers/build-files');
@@ -187,7 +189,8 @@ function fakeRun() {
   app.bridge.send = async (packet, meta) => { realSends.push({ packet, meta }); return { ok: true }; };
   app.csr = new CsrNetwork(app);
   app.fakes = loadFakes(app, { env: { DEBUG: '1' } });
-  for (const [id, Driver] of [['sg_pill', SGPillDriver], ['sg_mesh', SGMeshDriver], ['sg_plug', SGPlugDriver]]) {
+  for (const [id, Driver] of [['sg_pill', SGPillDriver], ['sg_mesh', SGMeshDriver], ['sg_plug', SGPlugDriver],
+    ['sg_thermostat', SGThermostatDriver]]) {
     const driver = new Driver({ homey: app.homey });
     driver.id = id;
     driver.devices = [];
@@ -222,12 +225,14 @@ async function pair(run, driverId, { real = { devices: [], found: [], out: true 
 // A device made from a list entry, as Homey makes it, and started.
 async function add(run, driverId, entry, { settings = { passphrase: '1234' } } = {}) {
   const driver = run.drivers[driverId];
-  const classes = { sg_mesh: () => driver.onMapDeviceClass({ getData: () => entry.data }), sg_plug: () => SGPlugDevice };
+  const classes = {
+    sg_mesh: () => driver.onMapDeviceClass({ getData: () => entry.data }), sg_plug: () => SGPlugDevice, sg_thermostat: () => SGThermostatDevice,
+  };
   const Class = classes[driverId] ? classes[driverId]() : SGCsrDevice;
   const device = new Class({
     homey: run.app.homey, store: entry.store, settings, data: entry.data, name: entry.name,
   });
-  device.hasCapability = (capability) => (entry.capabilities || ['onoff', 'dim']).includes(capability);
+  device.hasCapability = (capability) => driverId === 'sg_thermostat' || (entry.capabilities || ['onoff', 'dim']).includes(capability);
   driver.devices.push(device);
   await device.onInit();
   return device;
@@ -334,7 +339,8 @@ test('the fake devices\' packets are real CSRmesh packets, read with the fake ne
   assert.ok(plains.some((plain) => plain.subarray(0, 4).toString('hex') === '0000ff10'));
 });
 
-// ---- what the independent review asked to be guarded as well
+// ---- the fake network kept apart from the real one: location id, seq,
+// guards, pairing and failures
 
 const FAKE_PILL = {
   name: 'FAKE LEDDim Smart Pill 7F01', data: { id: `${FAKE_ID_PREFIX}@SC7F01` }, capabilities: ['onoff', 'dim'],
@@ -492,6 +498,45 @@ test('a fake Smart Plug and Smart Socket: listed by sg_plug with their icons, tu
   run.app.fakes.order('7F06 off');
   await runTimers(run.app.homey, 0);
   assert.equal(socket.getCapabilityValue('onoff'), false, 'turned off at the socket itself');
+  assert.deepEqual(run.realSends, []);
+  assert.deepEqual(run.bluetooth, []);
+});
+
+test('a fake HeatReg Smart: listed by sg_thermostat, read, set from Homey with control on, faults and its pause on order, never on the real radio', async () => {
+  const run = fakeRun();
+  const listed = await pair(run, 'sg_thermostat');
+  assert.deepEqual(listed.map((d) => [d.name, d.data.id, d.store.meshId, d.capabilities]), [
+    ['FAKE HeatReg Smart 7F07', 'fake:@MT7F07', 0x7f07, undefined],
+    ['FAKE HeatReg Smart 8123', 'fake:@ST8123', 0x8123, undefined],
+  ]);
+  // Control is on by default; the first is turned off by the user.
+  const off = await add(run, 'sg_thermostat', listed[0]);
+  const on = await add(run, 'sg_thermostat', listed[1]);
+  assert.deepEqual([off.getSettings().control_from_homey, on.getSettings().control_from_homey], [true, true]);
+  off.getSettings().control_from_homey = false;
+  assert.ok(off instanceof SGThermostatDevice);
+  // Read: status, temperatures and presets come through the same reading.
+  await runTimers(run.app.homey, 0, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000);
+  assert.deepEqual([on.getCapabilityValue('target_temperature'), on.getCapabilityValue('measure_temperature'),
+    on.getCapabilityValue('measure_temperature.floor'), on.getCapabilityValue('sg_heat_preset')], [21, 20.5, 24, 'comfort']);
+  // Control off refuses; on sends, and the answer comes 2 s later.
+  await assert.rejects(off._setPoint(22.5), { message: 'thermostat.controlOff' });
+  await on._setPoint(22.5);
+  await on._preset('eco');
+  await runTimers(run.app.homey, 2000);
+  assert.equal(run.app.fakes.nodes.find((n) => n.meshId === 0x8123).setPoint, 16, 'set from Homey at a high mesh id');
+  // Orders: a fault and the open window function, changed on the thermostat itself.
+  run.app.fakes.order('8123 error FFF');
+  run.app.fakes.order('8123 pause on');
+  await runTimers(run.app.homey, 0);
+  assert.equal(on.getCapabilityValue('alarm_problem'), true);
+  assert.equal(on.warning, 'thermostat.fault.FFF');
+  assert.equal(on.getCapabilityValue('sg_window_open'), true);
+  assert.equal(on.getCapabilityValue('measure_temperature.floor'), null, 'no floor reading with its sensor fault');
+  const heard = run.app.fakes.bridge.heard.map((m) => `${m.opcode.toString(16)} ${m.dst.toString(16)}`);
+  assert.ok(heard.includes('ff3e 8123') && heard.includes('ff03 8123') && heard.includes('ff3c 7f07'));
+  assert.ok(!heard.some((h) => h.endsWith(' 7f07') && /^ff(3e|42|03) /.test(h)), 'nothing set on the one with control off');
+  assert.deepEqual(run.app.fakes.bridge.refused, []);
   assert.deepEqual(run.realSends, []);
   assert.deepEqual(run.bluetooth, []);
 });

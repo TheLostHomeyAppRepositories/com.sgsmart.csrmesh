@@ -124,6 +124,9 @@ like the least I could do.
   January 2022.
 - **mjenssen93**, **erlingba**, **Berg** and others on hjemmeautomasjon.no, who
   kept asking the question from 2017 onwards.
+- **[Tabler Icons](https://tabler.io/icons)** (MIT, Paweł Kuna): the icons for
+  heating, the open window function and the floor limit. See
+  [LICENSE-tabler-icons.txt](LICENSE-tabler-icons.txt).
 
 ## Licence
 

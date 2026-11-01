@@ -18,7 +18,7 @@ const fake = require('./helpers/fake-homey');
 fake.install();
 
 const {
-  CSR_PRODUCTS, PILL_PREFIXES, PLUG_PREFIXES, ROTARY_PREFIXES, csrDriverFor, csrProductForName,
+  CSR_PRODUCTS, PILL_PREFIXES, PLUG_PREFIXES, ROTARY_PREFIXES, THERMOSTAT_PREFIXES, csrDriverFor, csrProductForName,
 } = require('../lib/sgProducts');
 const SGMeshDevice = require('../lib/SGDeviceBase');
 const SGCsrDevice = require('../lib/SGCsrDevice');
@@ -77,7 +77,8 @@ test('rotary dimmers: 12 prefixes, Gen2 to Gen4, all dimmable, none a Pill; sg_m
   }
   for (const prefix of Object.keys(CSR_PRODUCTS)) {
     const expected = ROTARY_PREFIXES.includes(prefix) ? 'sg_mesh'
-      : PILL_PREFIXES.includes(prefix) ? 'sg_pill' : PLUG_PREFIXES.includes(prefix) ? 'sg_plug' : null;
+      : PILL_PREFIXES.includes(prefix) ? 'sg_pill' : PLUG_PREFIXES.includes(prefix) ? 'sg_plug'
+        : THERMOSTAT_PREFIXES.includes(prefix) ? 'sg_thermostat' : null;
     assert.equal(csrDriverFor(csrProductForName(`${prefix}0000`)), expected, prefix);
   }
 });

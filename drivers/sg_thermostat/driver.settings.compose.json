@@ -1,0 +1,83 @@
+[
+  {
+    "$extends": "network"
+  },
+  {
+    "type": "group",
+    "label": {
+      "en": "Thermostat",
+      "no": "Termostat"
+    },
+    "children": [
+      {
+        "id": "control_from_homey",
+        "type": "checkbox",
+        "value": true,
+        "label": {
+          "en": "Control from Homey (being tried out)",
+          "no": "Styr fra Homey (under utprøving)"
+        },
+        "hint": {
+          "en": "On (default): Homey sends the target temperature, on and off and the preset to the thermostat, once for each change. Control from Homey is new and not yet tried with a real HeatReg Smart. Turn it off if something does not work as it should: Homey then only reads the thermostat, and changes made in Homey are refused.",
+          "no": "På (standard): Homey sender ønsket temperatur, av og på og forhåndsinnstillingen til termostaten, én gang per endring. Styringen fra Homey er ny og ennå ikke prøvd med en ekte HeatReg Smart. Slå den av hvis noe ikke virker som det skal: da leser Homey bare termostaten, og endringer i Homey avvises."
+        }
+      },
+      {
+        "id": "sensor",
+        "type": "dropdown",
+        "value": "floor",
+        "label": {
+          "en": "The sensor the thermostat goes by",
+          "no": "Føleren termostaten styrer etter"
+        },
+        "values": [
+          {
+            "id": "floor",
+            "label": {
+              "en": "Floor",
+              "no": "Gulv"
+            }
+          },
+          {
+            "id": "room",
+            "label": {
+              "en": "Room",
+              "no": "Rom"
+            }
+          },
+          {
+            "id": "roomFloor",
+            "label": {
+              "en": "Room, with a floor limit",
+              "no": "Rom med gulvgrense"
+            }
+          }
+        ],
+        "hint": {
+          "en": "Choose the sensor the thermostat was set up with in the SG app. It decides which faults show and whether the floor limit applies. Homey can't read it, and doesn't change the thermostat.",
+          "no": "Velg samme føler som termostaten ble satt opp med i SG-appen. Den avgjør hvilke feil som vises og om gulvgrensen gjelder. Homey kan ikke lese den, og endrer ikke termostaten."
+        }
+      },
+      {
+        "id": "heating_cable_power",
+        "type": "number",
+        "value": 0,
+        "min": 0,
+        "max": 5000,
+        "step": 10,
+        "units": {
+          "en": "W",
+          "no": "W"
+        },
+        "label": {
+          "en": "Heating cable power (W)",
+          "no": "Varmekabelens effekt (W)"
+        },
+        "hint": {
+          "en": "From the cable's label or the installation papers. Homey shows this as the power while the thermostat heats. With 0, no power is shown.",
+          "no": "Fra merket på kabelen eller installasjonspapirene. Homey viser dette som effekten mens termostaten varmer. Står den på 0, vises ingen effekt."
+        }
+      }
+    ]
+  }
+]

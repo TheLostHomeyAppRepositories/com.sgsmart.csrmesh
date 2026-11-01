@@ -1,0 +1,20 @@
+{
+  "type": "boolean",
+  "title": {
+    "en": "Floor limit",
+    "no": "Gulvgrense"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insights": true,
+  "insightsTitleTrue": {
+    "en": "The floor limit was reached",
+    "no": "Gulvgrensen ble nådd"
+  },
+  "insightsTitleFalse": {
+    "en": "Floor limit no longer reached",
+    "no": "Gulvgrensen er ikke lenger nådd"
+  },
+  "icon": "/assets/capabilities/sg_floor_limit.svg"
+}

@@ -71,7 +71,7 @@ test('the Norwegian texts say Nettverksisolasjon (Network Isolation), the Englis
   const app = JSON.parse(read('app.json'));
   const hints = app.drivers.flatMap((driver) => (driver.settings || []).flatMap((group) => group.children || []))
     .filter((setting) => setting.id === 'passphrase').map((setting) => setting.hint);
-  assert.equal(hints.length, 3, 'sg_mesh, sg_pill and sg_plug');
+  assert.equal(hints.length, 4, 'sg_mesh, sg_pill, sg_plug and sg_thermostat');
   for (const appHint of hints) assert.deepEqual(appHint, hint, 'app.json as network.json');
   for (const [name, text] of advice) {
     const named = text.split('Network Isolation').length - 1;
@@ -187,6 +187,7 @@ test('no text asks for other SG devices named @ND: only the first generation LED
     rotary: 'Første generasjon (@NDxxxx) er stabil. Senere generasjoner, også TW, Master og 400 2-pole, er under utprøving.',
     pill: ', også Micro, TW og Smart Pill ON-OFF: under utprøving.',
     plug: ' og Smart Socket: under utprøving.',
+    thermostat: ': under utprøving. Styring fra Homey er ny, på som standard, og kan slås av.',
     sg3: ', produktene med 3.0 i navnet, støttes ikke ennå.',
     other: 'Andre SG-enheter, som DIN, Push, Floor og Pill DALI, støttes ikke ennå.',
     report: 'Fungerer ikke alt som det skal? Meld fra i forumtråden.',
@@ -196,6 +197,7 @@ test('no text asks for other SG devices named @ND: only the first generation LED
     rotary: 'First generation (@NDxxxx) is stable. Later generations, including TW, Master and 400 2-pole, are being tested.',
     pill: ', including Micro, TW and Smart Pill ON-OFF: being tested.',
     plug: ' and Smart Socket: being tested.',
+    thermostat: ': being tested. Control from Homey is new, on by default, and can be turned off.',
     sg3: ', the products with 3.0 in the name, is not supported yet.',
     other: 'Other SG devices, such as DIN, Push, Floor and Pill DALI, are not supported yet.',
     report: 'Something not working? Report it in the forum thread.',
@@ -207,9 +209,10 @@ test('no text asks for other SG devices named @ND: only the first generation LED
   assert.ok(page.includes('<li><strong>LEDDim Smart</strong>: <span data-i18n="settings.otherDevice.rotary">'));
   assert.ok(page.includes('<li><strong>LEDDim Smart Pill</strong><span data-i18n="settings.otherDevice.pill">'));
   assert.ok(page.includes('<li><strong>Smart Plug</strong><span data-i18n="settings.otherDevice.plug">'));
+  assert.ok(page.includes('<li><strong>HeatReg Smart</strong><span data-i18n="settings.otherDevice.thermostat">'));
   assert.ok(page.includes('<li><strong>SG Smart 3.0</strong><span data-i18n="settings.otherDevice.sg3">'));
   assert.ok(page.includes('<li data-i18n="settings.otherDevice.other">'));
-  assert.equal((page.match(/<li>|<li /g) || []).length, 5, 'five points');
+  assert.equal((page.match(/<li>|<li /g) || []).length, 6, 'six points');
   assert.doesNotMatch(read('README.txt') + read('README.no.txt'), /Show log|Vis logg/);
   // 2.5.0: later generations and the Pill can be tried, and the store texts say so, without URLs.
   assert.match(read('README.txt'), /The first generation \(@NDxxxx in Bluetooth\) is stable\. Later generations and LEDDim Smart Pill are being tested\./);
@@ -243,6 +246,7 @@ test('driver names (2.5.0): the choices when adding a device, the same in app.js
     sg_group: { en: 'Group Gen1', no: 'Gruppe Gen1' },
     sg_pill: { en: 'LEDDim Smart Pill', no: 'LEDDim Smart Pill' },
     sg_plug: { en: 'Smart Plug and Smart Socket', no: 'Smart Plug og Smart Socket' },
+    sg_thermostat: { en: 'HeatReg Smart', no: 'HeatReg Smart' },
   };
   for (const [driver, name] of Object.entries(names)) {
     assert.deepEqual(JSON.parse(read(`drivers/${driver}/driver.compose.json`)).name, name, driver);
@@ -260,7 +264,7 @@ test('the Pill driver (sg_pill): the same texts in both languages, all used; no 
   assert.deepEqual(keys(en.pair.csr).sort(), keys(no.pair.csr).sort());
   const driver = read('drivers/sg_pill/driver.js') + read('lib/csrPairing.js');
   for (const key of keys(en.pair.csr)) assert.ok(driver.includes(`'pair.csr.${key}'`), `pair.csr.${key} is not used`);
-  for (const id of ['sg_mesh', 'sg_pill', 'sg_plug']) {
+  for (const id of ['sg_mesh', 'sg_pill', 'sg_plug', 'sg_thermostat']) {
     const compose = JSON.parse(read(`drivers/${id}/driver.compose.json`));
     assert.equal(compose.pair.find((step) => step.id === 'loading').options, undefined, id);
   }
@@ -273,11 +277,12 @@ test('the Pill driver (sg_pill): the same texts in both languages, all used; no 
   assert.deepEqual(Object.keys(en.pair.csr), ['failed'], 'nothing found is an empty list, with Homey\'s own text');
   // The generation is only in the log, and the trial only in the store
   // text, "Other SG devices" and README; device names are "LEDDim Smart Pill 1A2B".
-  for (const driver of ['sg_mesh', 'sg_pill', 'sg_plug']) {
+  for (const driver of ['sg_mesh', 'sg_pill', 'sg_plug', 'sg_thermostat']) {
     const { name } = JSON.parse(read(`drivers/${driver}/driver.compose.json`));
     for (const text of Object.values(name)) assert.doesNotMatch(text, /test|Gen\d/i, driver);
   }
-  for (const file of ['lib/csrPairing.js', 'drivers/sg_mesh/driver.js', 'drivers/sg_pill/driver.js', 'drivers/sg_plug/driver.js']) {
+  for (const file of ['lib/csrPairing.js', 'drivers/sg_mesh/driver.js', 'drivers/sg_pill/driver.js', 'drivers/sg_plug/driver.js',
+    'drivers/sg_thermostat/driver.js']) {
     assert.doesNotMatch(read(file), /pair\.csr\.trial|generation\}, /, file);
   }
   assert.equal(en.pair.csr.trial, undefined);
@@ -304,12 +309,13 @@ test('where other products go (pair.found): what was not found, what was, and wh
 });
 
 // The duration texts the drivers' guide steps name in their options.
-const guideDurations = () => ['sg_mesh', 'sg_pill', 'sg_plug']
+const guideDurations = () => ['sg_mesh', 'sg_pill', 'sg_plug', 'sg_thermostat']
   .map((driver) => JSON.parse(read(`drivers/${driver}/driver.compose.json`)).pair.find((step) => step.id === 'guide'))
   .map((step) => step.options && step.options.duration).filter(Boolean);
 
 test('every pair text the drivers and their views use is there in both languages, and every pair text is used', () => {
-  const sources = ['drivers/sg_mesh/driver.js', 'drivers/sg_pill/driver.js', 'drivers/sg_plug/driver.js', 'drivers/sg_mesh/pair/guide.html',
+  const sources = ['drivers/sg_mesh/driver.js', 'drivers/sg_pill/driver.js', 'drivers/sg_plug/driver.js',
+    'drivers/sg_thermostat/driver.js', 'drivers/sg_mesh/pair/guide.html',
     'drivers/sg_group/driver.js', 'drivers/sg_group/pair/select_members.html',
     'drivers/sg_group/repair/select_members.html', 'lib/csrPairing.js'].map(read).join('\n');
   const steps = [...sources.matchAll(/data-step="([A-Za-z]+)"/g)].map((m) => `pair.guide.${m[1]}`);
@@ -332,12 +338,13 @@ test('the guide before the search: the same view in every driver that searches, 
   const guide = read('drivers/sg_mesh/pair/guide.html');
   assert.equal(read('drivers/sg_pill/pair/guide.html'), guide);
   assert.equal(read('drivers/sg_plug/pair/guide.html'), guide);
+  assert.equal(read('drivers/sg_thermostat/pair/guide.html'), guide);
   assert.deepEqual(Object.keys(en.pair.guide).sort(), Object.keys(no.pair.guide).sort());
   for (const key of Object.keys(en.pair.guide)) {
     assert.ok(guide.includes(`'pair.guide.${key}'`) || guide.includes(`data-step="${key}"`) || guideDurations().includes(key),
       `pair.guide.${key} is not used`);
   }
-  assert.deepEqual(guideDurations(), ['durationPill', 'durationPill'], 'sg_pill and sg_plug');
+  assert.deepEqual(guideDurations(), ['durationPill', 'durationPill', 'durationPill'], 'sg_pill, sg_plug and sg_thermostat');
   assert.ok(guide.includes('Homey.getOptions()') && guide.includes('pair.guide.${options.duration}'));
   assert.equal(no.pair.guide.durationPill, 'Søket tar vanligvis under ett minutt.');
   assert.equal(en.pair.guide.durationPill, 'The search usually takes less than a minute.');
@@ -346,13 +353,17 @@ test('the guide before the search: the same view in every driver that searches, 
     assert.match(locale.pair.guide.password, /1234/);
     assert.match(locale.pair.guide.closeApp, /SG/);
   }
+  // First: the device must be set up in the SG app; Homey adds none to the network.
+  assert.deepEqual([...guide.matchAll(/<li data-step="([A-Za-z]+)">/g)].map((m) => m[1]), ['setupFirst', 'closeApp', 'near', 'password']);
+  assert.equal(no.pair.guide.setupFirst, 'Sett opp enheten i SG-appen på telefonen først. Homey legger ikke til nye enheter i nettet.');
+  assert.equal(en.pair.guide.setupFirst, 'Set up the device in the SG app on your phone first. Homey does not add new devices to the network.');
   assert.equal(no.pair.guide.title, 'Før du søker');
   assert.equal(en.pair.guide.title, 'Before you search');
   assert.equal(no.pair.guide.duration, 'Søket tar 10 til 20 sekunder.');
   assert.equal(en.pair.guide.duration, 'The search takes 10 to 20 seconds.');
   const firstTwo = (driver) => JSON.parse(read(`drivers/${driver}/driver.compose.json`)).pair
     .slice(0, 2).map((step) => [step.id, step.navigation]);
-  for (const driver of ['sg_mesh', 'sg_pill', 'sg_plug']) {
+  for (const driver of ['sg_mesh', 'sg_pill', 'sg_plug', 'sg_thermostat']) {
     assert.deepEqual(firstTwo(driver), [['guide', { next: 'loading' }], ['loading', { next: 'list_devices' }]], driver);
   }
 });
@@ -376,8 +387,8 @@ test('the settings page follows Homey\'s form pattern: every section a titled fi
   for (const locale of [en, no]) assert.match(locale.settings.keepConnected.hint, /LEDDim Smart .*\(@NDxxxx\)\./);
   assert.equal(no.settings.connection.title, 'Tilkobling');
   assert.equal(en.settings.connection.title, 'Connection');
-  assert.match(no.settings.keepConnected.hint, /får ikke SG Smart-appen på telefonen kontakt med den når innstillingen er på\.$/);
-  assert.match(en.settings.keepConnected.hint, /the SG Smart app on your phone cannot reach it while this setting is on\.$/);
+  assert.match(no.settings.keepConnected.hint, /får ikke SG-appen på telefonen kontakt med den når innstillingen er på\.$/);
+  assert.match(en.settings.keepConnected.hint, /the SG app on your phone cannot reach it while this setting is on\.$/);
   assert.equal(no.settings.signal.hint, 'Vises under Status når du åpner en dimmer av første generasjon. "Direkte" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer.');
   assert.equal(en.settings.signal.hint, 'Shown under Status when you open a first-generation dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.');
   assert.ok(page.includes(en.settings.signal.hint));
