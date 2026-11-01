@@ -6,6 +6,7 @@ const { deriveNetworkKey, DEFAULT_PASSPHRASE, meshIdFromName } = require('./lib/
 const { learnLocation } = require('./lib/location');
 const { FileLog, maskLog } = require('./lib/FileLog');
 const { CsrNetwork } = require('./lib/CsrNetwork');
+const { isFakeDevice, loadFakes } = require('./lib/fakeDevices');
 
 // App settings and their defaults. keepConnected ("Keep dimmers connected")
 // has no stored default: unset, it follows the number of dimmers; see
@@ -48,6 +49,14 @@ class SGSmartApp extends Homey.App {
     this.csr = new CsrNetwork(this);
     this.bridge.onFrame((frame) => this.csr.handleFrame(frame));
     this.csr.start();
+    // Only in a run with `homey app run` (lib/fakeDevices.js); otherwise null.
+    // An error there never stops the start: it is logged.
+    try {
+      this.fakes = loadFakes(this);
+    } catch (err) {
+      this.fakes = null;
+      this.error(`fake devices not loaded: ${err.message || err}`);
+    }
 
     // "Keep dimmers connected" takes effect at once, without a restart.
     this.homey.settings.on('set', (key) => {
@@ -69,6 +78,7 @@ class SGSmartApp extends Homey.App {
   async onUninit() {
     if (this._notHeardTimer) this.homey.clearInterval(this._notHeardTimer);
     if (this.csr) this.csr.stop();
+    if (this.fakes) this.fakes.stop();
     if (this.bridge) {
       await this.bridge.shutdown().catch((err) => {
         this.error(`bridge shutdown failed: ${err.message || err}`);
@@ -137,7 +147,10 @@ class SGSmartApp extends Homey.App {
     }
   }
 
-  // Every paired device, across all drivers.
+  // Every paired device, across all drivers, but the fake ones
+  // (lib/fakeDevices.js): they have a network of their own, and nothing here
+  // (the network key, the location ids for FF10, a status) may come from or
+  // go to one.
   _devices() {
     const devices = [];
     try {
@@ -147,7 +160,15 @@ class SGSmartApp extends Homey.App {
     } catch (err) {
       this.error(`enumerating devices failed: ${err.message || err}`);
     }
-    return devices;
+    return devices.filter((device) => !isFakeDevice(device));
+  }
+
+  // What a device sends and asks through (lib/SGCsrDevice.js): this app, or
+  // for a fake device the fake network. null for a fake device without one:
+  // one left from a run with `homey app run`.
+  networkFor(device) {
+    if (!isFakeDevice(device)) return this;
+    return this.fakes || null;
   }
 
   _dispatchStatus(idHex, level, location) {

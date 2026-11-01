@@ -73,6 +73,7 @@
     "notHeard": "No contact with the dimmer. Wrong password or out of range?",
     "waitingForStatus": "Waiting for the dimmer's first status.",
     "passwordWrong": "Possibly wrong network password. Check settings.",
+    "fakeLeftOver": "Test device from a development run. Nothing is sent. Delete it.",
     "connection": {
       "directGood": "Direct, good",
       "directWeak": "Direct, weak",

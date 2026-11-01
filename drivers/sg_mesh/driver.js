@@ -6,6 +6,7 @@ const {
   foundNote, laterDevice, laterFindings, laterNodes, pairInLoadingView, withStates,
 } = require('../../lib/csrPairing');
 const { csrDriverFor, csrProductForName } = require('../../lib/sgProducts');
+const { isFakeId } = require('../../lib/fakeDevices');
 const SGMeshDevice = require('../../lib/SGDeviceBase');
 const SGCsrDevice = require('../../lib/SGCsrDevice');
 
@@ -102,10 +103,13 @@ class SGMeshDriver extends Homey.Driver {
   // tick, nothing async). data.id cannot change after pairing: the @ND name of
   // a first generation dimmer, which every dimmer added before 2.5.0 has, or
   // the name of a later generation rotary dimmer. Anything else, and any
-  // error, gets the first generation class, as before 2.5.0.
+  // error, gets the first generation class, as before 2.5.0. A fake device
+  // (lib/fakeDevices.js) always gets the later class, which sends through
+  // its fake network, never the first generation class.
   onMapDeviceClass(device) {
     try {
       const id = String((device.getData() || {}).id || '');
+      if (isFakeId(id)) return SGCsrDevice;
       if (csrDriverFor(csrProductForName(id)) === 'sg_mesh') return SGCsrDevice;
     } catch (err) {
       // the first generation class

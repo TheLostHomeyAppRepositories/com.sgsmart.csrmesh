@@ -73,6 +73,7 @@
     "notHeard": "Ingen kontakt med dimmeren. Feil passord eller utenfor rekkevidde?",
     "waitingForStatus": "Venter på første status fra dimmeren.",
     "passwordWrong": "Mulig feil nettverkspassord. Sjekk innstillingene.",
+    "fakeLeftOver": "Testenhet fra en utviklingskjøring. Ingenting sendes. Slett den.",
     "connection": {
       "directGood": "Direkte, godt",
       "directWeak": "Direkte, svakt",

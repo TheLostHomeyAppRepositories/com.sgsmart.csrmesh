@@ -4,3 +4,5 @@ PROGRESS.md
 progress/
 CLAUDE.md
 test/
+lib/fake/
+dev/
