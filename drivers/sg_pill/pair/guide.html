@@ -50,8 +50,8 @@
     }
   }).catch(() => {});
   // The picture is assets/guide/guide.png in this driver; without it, its room
-  // goes. The sg_mesh and sg_pill drivers share this view, its texts
-  // (pair.guide) and its picture (a copy in each driver).
+  // goes. The drivers that search share this view and its texts (pair.guide);
+  // each has its own picture.
   const picture = document.querySelector('.sg-picture img');
   const hide = () => { picture.parentElement.hidden = true; };
   picture.addEventListener('error', hide);

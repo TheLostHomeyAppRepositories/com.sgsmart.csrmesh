@@ -9,7 +9,6 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
 
 const fake = require('./helpers/fake-homey');
 
@@ -22,48 +21,16 @@ const MeshBridge = require('../lib/MeshBridge');
 const SGCsrDevice = require('../lib/SGCsrDevice');
 const SGMeshDriver = require('../drivers/sg_mesh/driver');
 const SGPillDriver = require('../drivers/sg_pill/driver');
+const SGPlugDriver = require('../drivers/sg_plug/driver');
+const SGPlugDevice = require('../drivers/sg_plug/device');
 const SGSmartApp = require('../app');
 const { FAKE_ID_PREFIX, isFakeDevice, loadFakes } = require('../lib/fakeDevices');
+const { buildFiles } = require('./helpers/build-files');
 
 const ROOT = path.join(__dirname, '..');
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 
 // ---- never in a build
-
-// The folder of the Homey CLI that `homey` on the PATH runs, or null.
-function homeyCli() {
-  try {
-    let dir = path.dirname(fs.realpathSync(execFileSync('which', ['homey'], { encoding: 'utf8' }).trim()));
-    while (dir !== path.dirname(dir)) {
-      const manifest = path.join(dir, 'package.json');
-      if (fs.existsSync(manifest) && JSON.parse(fs.readFileSync(manifest, 'utf8')).name === 'homey') return dir;
-      dir = path.dirname(dir);
-    }
-  } catch (err) {
-    // not on the PATH
-  }
-  return null;
-}
-
-// The files `homey app build`, `run`, `install` and `publish` copy from the
-// app folder: the Homey CLI's own walker and rules (lib/App.js,
-// _getAppSourceFiles), read from the CLI on this machine.
-function buildFiles() {
-  const cli = homeyCli();
-  assert.ok(cli && fs.existsSync(path.join(cli, 'lib', 'App.js')), 'the Homey CLI (homey on the PATH) is needed for this test');
-  const source = fs.readFileSync(path.join(cli, 'lib', 'App.js'), 'utf8');
-  const body = source.slice(source.indexOf('async _getAppSourceFiles()'));
-  const list = /const ignoreRules = \[([^\]]*)\]/.exec(body);
-  assert.ok(list, 'the CLI still lists its own rules in _getAppSourceFiles');
-  assert.match(body.slice(0, 600), /ignoreFiles: \['\.homeyignore', DEFAULT_IGNORE_RULES_FILE\]/);
-  const rules = [...list[1].matchAll(/'([^']*)'/g)].map((m) => m[1]);
-  const ignoreWalk = require(path.join(cli, 'node_modules', 'ignore-walk'));
-  const walker = new ignoreWalk.Walker({
-    path: ROOT, ignoreFiles: ['.homeyignore', '$default-ignore-rules'], includeEmpty: true, follow: true,
-  });
-  walker.onReadIgnoreFile('$default-ignore-rules', rules.join('\r\n'), () => {});
-  return new Promise((resolve, reject) => walker.on('done', resolve).on('error', reject).start());
-}
 
 test('.homeyignore leaves lib/fake/ and dev/ out', () => {
   const lines = fs.readFileSync(path.join(ROOT, '.homeyignore'), 'utf8').split(/\r?\n/);
@@ -220,7 +187,7 @@ function fakeRun() {
   app.bridge.send = async (packet, meta) => { realSends.push({ packet, meta }); return { ok: true }; };
   app.csr = new CsrNetwork(app);
   app.fakes = loadFakes(app, { env: { DEBUG: '1' } });
-  for (const [id, Driver] of [['sg_pill', SGPillDriver], ['sg_mesh', SGMeshDriver]]) {
+  for (const [id, Driver] of [['sg_pill', SGPillDriver], ['sg_mesh', SGMeshDriver], ['sg_plug', SGPlugDriver]]) {
     const driver = new Driver({ homey: app.homey });
     driver.id = id;
     driver.devices = [];
@@ -255,7 +222,8 @@ async function pair(run, driverId, { real = { devices: [], found: [], out: true 
 // A device made from a list entry, as Homey makes it, and started.
 async function add(run, driverId, entry, { settings = { passphrase: '1234' } } = {}) {
   const driver = run.drivers[driverId];
-  const Class = driverId === 'sg_mesh' ? driver.onMapDeviceClass({ getData: () => entry.data }) : SGCsrDevice;
+  const classes = { sg_mesh: () => driver.onMapDeviceClass({ getData: () => entry.data }), sg_plug: () => SGPlugDevice };
+  const Class = classes[driverId] ? classes[driverId]() : SGCsrDevice;
   const device = new Class({
     homey: run.app.homey, store: entry.store, settings, data: entry.data, name: entry.name,
   });
@@ -324,6 +292,7 @@ test('a fake device answers a command after 2 s, through the same reading as a r
   assert.deepEqual(run.bluetooth, []);
   assert.equal(run.app.csr.nodes.size, 0);
   assert.deepEqual(run.app.knownLocations(), [], 'no fake location id for the real FF10');
+  assert.deepEqual(run.app.fakes.bridge.refused, [], 'nothing the app sent was refused');
 });
 
 test('the real network\'s messages never reach a fake device, and the real key never comes from one', async () => {
@@ -504,4 +473,25 @@ test('fake devices that fail to load never stop the start: the error is logged, 
     assert.ok(logs.includes('SG LEDDim v9.9.9 initialized'));
     assert.deepEqual(errors, [said]);
   }
+});
+
+test('a fake Smart Plug and Smart Socket: listed by sg_plug with their icons, turned on and off with an answer after 2 s, never on the real radio', async () => {
+  const run = fakeRun();
+  const listed = await pair(run, 'sg_plug');
+  assert.deepEqual(listed.map((d) => [d.name, d.data.id, d.icon, d.capabilities.join('+')]), [
+    ['FAKE Smart Plug 7F05', 'fake:@GP7F05', '/icons/plug.svg', 'onoff'],
+    ['FAKE Smart Socket 7F06', 'fake:@GB7F06', '/icons/socket.svg', 'onoff'],
+  ]);
+  const plugDevice = await add(run, 'sg_plug', listed[0]);
+  const socket = await add(run, 'sg_plug', listed[1]);
+  assert.ok(plugDevice instanceof SGPlugDevice);
+  plugDevice._request(100);
+  socket._request(100);
+  await runTimers(run.app.homey, 2000);
+  assert.deepEqual([plugDevice.getCapabilityValue('onoff'), socket.getCapabilityValue('onoff')], [true, true]);
+  run.app.fakes.order('7F06 off');
+  await runTimers(run.app.homey, 0);
+  assert.equal(socket.getCapabilityValue('onoff'), false, 'turned off at the socket itself');
+  assert.deepEqual(run.realSends, []);
+  assert.deepEqual(run.bluetooth, []);
 });

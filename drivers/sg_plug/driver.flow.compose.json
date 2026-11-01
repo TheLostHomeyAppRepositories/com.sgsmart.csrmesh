@@ -1,0 +1,97 @@
+{
+  "triggers": [
+    {
+      "id": "plug_countdown_done",
+      "title": {
+        "en": "The countdown is done",
+        "no": "Nedtellingen er ferdig"
+      },
+      "hint": {
+        "en": "When a countdown started in Homey is up, and the plug has been sent off.",
+        "no": "Når en nedtelling startet i Homey er ute, og pluggen har fått beskjed om å slå seg av."
+      }
+    }
+  ],
+  "conditions": [
+    {
+      "id": "plug_countdown_running",
+      "title": {
+        "en": "The countdown !{{is|is not}} running",
+        "no": "Nedtellingen !{{går|går ikke}}"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "plug_off_in",
+      "title": {
+        "en": "Turn off in ... minutes",
+        "no": "Slå av om ... minutter"
+      },
+      "titleFormatted": {
+        "en": "Turn off in [[minutes]] minutes",
+        "no": "Slå av om [[minutes]] minutter"
+      },
+      "hint": {
+        "en": "Homey counts down and turns the plug off when the time is up. A new countdown replaces the one running, and turning the plug off in Homey cancels it.",
+        "no": "Homey teller ned og slår av pluggen når tiden er ute. En ny nedtelling erstatter den som går, og slås pluggen av i Homey, avbrytes nedtellingen."
+      },
+      "args": [
+        {
+          "type": "number",
+          "name": "minutes",
+          "title": {
+            "en": "Minutes",
+            "no": "Minutter"
+          },
+          "placeholder": {
+            "en": "1 to 1440",
+            "no": "1 til 1440"
+          },
+          "min": 1,
+          "max": 1440,
+          "step": 1
+        }
+      ]
+    },
+    {
+      "id": "plug_on_for",
+      "title": {
+        "en": "Turn on for ... minutes",
+        "no": "Slå på i ... minutter"
+      },
+      "titleFormatted": {
+        "en": "Turn on for [[minutes]] minutes",
+        "no": "Slå på i [[minutes]] minutter"
+      },
+      "hint": {
+        "en": "Turns the plug on now, and off when the time is up. Turning it off in Homey cancels the countdown.",
+        "no": "Slår på pluggen nå, og av når tiden er ute. Slås den av i Homey, avbrytes nedtellingen."
+      },
+      "args": [
+        {
+          "type": "number",
+          "name": "minutes",
+          "title": {
+            "en": "Minutes",
+            "no": "Minutter"
+          },
+          "placeholder": {
+            "en": "1 to 1440",
+            "no": "1 til 1440"
+          },
+          "min": 1,
+          "max": 1440,
+          "step": 1
+        }
+      ]
+    },
+    {
+      "id": "plug_countdown_cancel",
+      "title": {
+        "en": "Cancel the countdown",
+        "no": "Avbryt nedtellingen"
+      }
+    }
+  ]
+}

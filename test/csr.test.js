@@ -65,9 +65,9 @@ test('FF11: location id, six name characters after @, resets; shorter is nothing
 
 test('FF05 and FF50: the level counts only when on and 1..100', () => {
   assert.deepEqual(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1, 40, 7])),
-    { location: LOC, on: true, level: 40, number: 7, firmware: null, white: null });
+    { location: LOC, on: true, level: 40, number: 7, firmware: null, white: null, flags: null });
   assert.deepEqual(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1, 40, 7, 1, 2, 0x33, 0x80])),
-    { location: LOC, on: true, level: 40, number: 7, firmware: 0x0102, white: 0x33 });
+    { location: LOC, on: true, level: 40, number: 7, firmware: 0x0102, white: 0x33, flags: 0x80 });
   assert.equal(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 0, 0, 8])).level, 0);
   assert.equal(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1, 0])).level, null);
   assert.equal(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1])), null);
@@ -977,7 +977,7 @@ test('pairing: scanned names and FF11 answers together; a Pill with a mesh id ca
   driver.getDevices = () => [];
   const { devices, found } = await driver._search();
   assert.deepEqual(found.map((f) => [f.name, f.state]).sort(),
-    [['@GB3C4D', 'notYet'], ['@GE9C0D', 'add'], ['@MJ7A8B', 'noAnswer'], ['@SC1A2B', 'add'], ['@SX5E6F', 'notYet']]);
+    [['@GB3C4D', 'elsewhere'], ['@GE9C0D', 'add'], ['@MJ7A8B', 'noAnswer'], ['@SC1A2B', 'add'], ['@SX5E6F', 'notYet']]);
   const pill = devices.find((d) => d.data.id === '@SC1A2B');
   assert.equal(pill.name, 'LEDDim Smart Pill 1A2B');
   assert.equal(pill.class, undefined, 'a light, the driver\'s class');
@@ -990,7 +990,7 @@ test('pairing: scanned names and FF11 answers together; a Pill with a mesh id ca
   assert.deepEqual(onOff.capabilities, ['onoff']);
   assert.equal(devices.length, 2);
   assert.ok(driver.logs.some((line) => line.includes('4 FF11 answer(s), 5 SG device(s) after Gen1')));
-  assert.ok(driver.logs.some((line) => line.includes('@GB Gen4 onoff notYet') && line.includes('@SX Gen3 switch notYet')));
+  assert.ok(driver.logs.some((line) => line.includes('@GB Gen4 onoff elsewhere') && line.includes('@SX Gen3 switch notYet')));
   assert.ok(!driver.logs.some((line) => /1A2B|3C4D|5E6F|7A8B|9C0D/.test(line)));
 
   driver.getDevices = () => [{ getData: () => ({ id: '@SC1A2B' }) }];
@@ -1004,7 +1004,7 @@ test('icons: the Pill icon for every Pill, no other icons, the driver icon, and 
   const path = require('path');
   const assets = path.join(__dirname, '..', 'drivers', 'sg_pill', 'assets');
   assert.ok(fs.existsSync(path.join(assets, 'icon.svg')));
-  assert.deepEqual(ICON_NAMES, ['pill']);
+  assert.deepEqual(ICON_NAMES, ['pill', 'plug', 'socket']);
   assert.deepEqual(fs.readdirSync(path.join(assets, 'icons')).filter((file) => file.endsWith('.svg')), ['pill.svg']);
   for (const prefix of PILL_PREFIXES) assert.equal(csrProductForName(`${prefix}0000`).icon, 'pill', prefix);
   for (const prefix of Object.keys(CSR_PRODUCTS)) {
@@ -1079,7 +1079,7 @@ test('pairing: nothing found moves on all the same, to an empty list: Homey says
   assert.equal(pairSteps(driver).at(-1), 'pair: list_devices: 0 device(s), none found');
 });
 
-test('pairing: no Pill, but other products: the list says so, and names those that cannot be added yet', async () => {
+test('pairing: no Pill, but other products: the list says so, where to add those another driver adds, and names those that cannot be added yet', async () => {
   const { driver } = pairDriver([SWITCH, PLUG, { ...PLUG, meshId: 0x0127, name: '@GB7A8B' }]);
   driver.homey.__ = (key, tokens) => (tokens ? `${key} ${JSON.stringify(tokens)}` : key);
   const session = pairSession();
@@ -1087,7 +1087,7 @@ test('pairing: no Pill, but other products: the list says so, and names those th
   await session.show('loading');
   assert.equal(session.views.length, 1);
   await assert.rejects(session.handlers.list_devices(),
-    { message: 'pair.found.noPill pair.found.notYet {"products":"Smart Switch, Smart Socket"}' });
+    { message: 'pair.found.noPill pair.found.goToPlug {"products":"Smart Socket"} pair.found.notYet {"products":"Smart Switch"}' });
   assert.equal(pairSteps(driver).at(-1), 'pair: list_devices: error found, none to add');
 });
 

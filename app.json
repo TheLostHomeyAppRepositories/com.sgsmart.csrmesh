@@ -308,8 +308,226 @@
           ]
         }
       ]
+    },
+    {
+      "name": {
+        "en": "Smart Plug and Smart Socket",
+        "no": "Smart Plug og Smart Socket"
+      },
+      "class": "socket",
+      "capabilities": [
+        "onoff"
+      ],
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "ble"
+      ],
+      "images": {
+        "small": "/drivers/sg_plug/assets/images/small.png",
+        "large": "/drivers/sg_plug/assets/images/large.png",
+        "xlarge": "/drivers/sg_plug/assets/images/xlarge.png"
+      },
+      "pair": [
+        {
+          "id": "guide",
+          "options": {
+            "duration": "durationPill"
+          },
+          "navigation": {
+            "next": "loading"
+          }
+        },
+        {
+          "id": "loading",
+          "template": "loading",
+          "navigation": {
+            "next": "list_devices"
+          }
+        },
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "prev": "guide",
+            "next": "add_devices"
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "sg_plug",
+      "settings": [
+        {
+          "id": "network",
+          "type": "group",
+          "label": {
+            "en": "CSRmesh network",
+            "no": "CSRmesh-nettverk"
+          },
+          "children": [
+            {
+              "id": "passphrase",
+              "type": "text",
+              "value": "1234",
+              "label": {
+                "en": "Network passphrase",
+                "no": "Nettverkspassord"
+              },
+              "hint": {
+                "en": "The CSRmesh passphrase for your installation. It is 1234, unless \"Network Isolation\" is on in the SG app: turn it off there, which sets it back to 1234. Then all devices must be set up again in the SG app. If you have your home's password, you can enter it here instead: the same one in every dimmer.",
+                "no": "CSRmesh-passordet for installasjonen din. Det er 1234, med mindre \"Nettverksisolasjon (Network Isolation)\" er slått på i SG-appen: slå den av der, så blir det 1234 igjen. Da må alle enhetene settes opp på nytt i SG-appen. Har du passordet for hjemmet ditt, kan du i stedet skrive det inn her: det samme i hver dimmer."
+              }
+            },
+            {
+              "id": "netkey_hex",
+              "type": "text",
+              "value": "",
+              "label": {
+                "en": "Raw network key (advanced)",
+                "no": "Rå nettverksnøkkel (avansert)"
+              },
+              "hint": {
+                "en": "Optional. 32 hex characters = the 16-byte CSRmesh network key. Overrides the passphrase when set.",
+                "no": "Valgfritt. 32 hex-tegn = 16-byte CSRmesh-nettverksnøkkel. Overstyrer passordet når den er satt."
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
+  "flow": {
+    "triggers": [
+      {
+        "id": "plug_countdown_done",
+        "title": {
+          "en": "The countdown is done",
+          "no": "Nedtellingen er ferdig"
+        },
+        "hint": {
+          "en": "When a countdown started in Homey is up, and the plug has been sent off.",
+          "no": "Når en nedtelling startet i Homey er ute, og pluggen har fått beskjed om å slå seg av."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_plug"
+          }
+        ]
+      }
+    ],
+    "conditions": [
+      {
+        "id": "plug_countdown_running",
+        "title": {
+          "en": "The countdown !{{is|is not}} running",
+          "no": "Nedtellingen !{{går|går ikke}}"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_plug"
+          }
+        ]
+      }
+    ],
+    "actions": [
+      {
+        "id": "plug_off_in",
+        "title": {
+          "en": "Turn off in ... minutes",
+          "no": "Slå av om ... minutter"
+        },
+        "titleFormatted": {
+          "en": "Turn off in [[minutes]] minutes",
+          "no": "Slå av om [[minutes]] minutter"
+        },
+        "hint": {
+          "en": "Homey counts down and turns the plug off when the time is up. A new countdown replaces the one running, and turning the plug off in Homey cancels it.",
+          "no": "Homey teller ned og slår av pluggen når tiden er ute. En ny nedtelling erstatter den som går, og slås pluggen av i Homey, avbrytes nedtellingen."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_plug"
+          },
+          {
+            "type": "number",
+            "name": "minutes",
+            "title": {
+              "en": "Minutes",
+              "no": "Minutter"
+            },
+            "placeholder": {
+              "en": "1 to 1440",
+              "no": "1 til 1440"
+            },
+            "min": 1,
+            "max": 1440,
+            "step": 1
+          }
+        ]
+      },
+      {
+        "id": "plug_on_for",
+        "title": {
+          "en": "Turn on for ... minutes",
+          "no": "Slå på i ... minutter"
+        },
+        "titleFormatted": {
+          "en": "Turn on for [[minutes]] minutes",
+          "no": "Slå på i [[minutes]] minutter"
+        },
+        "hint": {
+          "en": "Turns the plug on now, and off when the time is up. Turning it off in Homey cancels the countdown.",
+          "no": "Slår på pluggen nå, og av når tiden er ute. Slås den av i Homey, avbrytes nedtellingen."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_plug"
+          },
+          {
+            "type": "number",
+            "name": "minutes",
+            "title": {
+              "en": "Minutes",
+              "no": "Minutter"
+            },
+            "placeholder": {
+              "en": "1 to 1440",
+              "no": "1 til 1440"
+            },
+            "min": 1,
+            "max": 1440,
+            "step": 1
+          }
+        ]
+      },
+      {
+        "id": "plug_countdown_cancel",
+        "title": {
+          "en": "Cancel the countdown",
+          "no": "Avbryt nedtellingen"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_plug"
+          }
+        ]
+      }
+    ]
+  },
   "capabilities": {
     "sg_connection": {
       "type": "string",

@@ -17,7 +17,11 @@
       "noDimmerButPill": "Fant ingen dreiedimmere, men fant __products__. Gå tilbake og velg \"LEDDim Smart Pill\" for å legge til.",
       "noPill": "Fant ingen Pill.",
       "noPillButDimmer": "Fant ingen Pill, men fant __products__. Gå tilbake og velg \"LEDDim Smart\" for å legge til.",
-      "notYet": "Fant __products__, som ikke kan legges til ennå."
+      "noPlug": "Fant ingen Smart Plug eller Smart Socket.",
+      "notYet": "Fant __products__, som ikke kan legges til ennå.",
+      "goToDimmer": "Fant __products__. Gå tilbake og velg \"LEDDim Smart\" for å legge til.",
+      "goToPill": "Fant __products__. Gå tilbake og velg \"LEDDim Smart Pill\" for å legge til.",
+      "goToPlug": "Fant __products__. Gå tilbake og velg \"Smart Plug og Smart Socket\" for å legge til."
     },
     "guide": {
       "title": "Før du søker",
@@ -44,6 +48,7 @@
       "title": "Hvilke SG-enheter støttes",
       "rotary": "Første generasjon (@NDxxxx) er stabil. Senere generasjoner, også TW, Master og 400 2-pole, er under utprøving.",
       "pill": ", også Micro, TW og Smart Pill ON-OFF: under utprøving.",
+      "plug": " og Smart Socket: under utprøving.",
       "sg3": ", produktene med 3.0 i navnet, støttes ikke ennå.",
       "other": "Andre SG-enheter, som DIN, Push, Floor og Pill DALI, støttes ikke ennå.",
       "report": "Fungerer ikke alt som det skal? Meld fra i forumtråden."
