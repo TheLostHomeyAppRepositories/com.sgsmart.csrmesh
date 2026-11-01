@@ -1,7 +1,7 @@
-Virker med SG LEDDim Smart. Første generasjon (@NDxxxx i Bluetooth) er stabil. Senere generasjoner og LEDDim Smart Pill er under utprøving. Fortell gjerne i forumtråden hvordan det går.
+Støtter SG LEDDim Smart. Første generasjon (@NDxxxx i Bluetooth) fungerer stabilt. Nyere generasjoner, LEDDim Smart Pill, Smart Plug, Smart Socket og gulvtermostaten HeatReg Smart er under utprøving. Del gjerne erfaringer i forumtråden.
 
-Homey Pro styrer dimmerne direkte med Bluetooth, uten gateway. Legg til én enhet for hver dimmer. Første generasjon kan også grupperes. Du kan slå av og på og justere lysstyrken. Med første generasjon kan du også holde dimmerne tilkoblet for raskere styring. Da vises endringer fra veggbryteren med en gang.
+Homey Pro styrer enhetene direkte via Bluetooth. Sett opp enheten i SG-appen på telefonen først. Homey legger ikke til nye enheter i nettet. Legg deretter til hver enhet i Homey. Du kan slå enhetene av og på og justere lysstyrken på dimmerne. Første generasjon kan også grupperes og holdes tilkoblet for raskere styring og umiddelbar status fra veggbryteren. HeatReg Smart viser rom- og gulvtemperatur og lar deg stille inn ønsket temperatur.
 
-Kommandoene krypteres med nettverkspassordet, som vanligvis er 1234. Får du varsel om feil passord, sjekk Nettverksisolasjon (Network Isolation) i SG-appen. Slå den av for å bruke 1234, eller legg inn hjemmets passord i innstillingene for hver dimmer. Slår du den av, må alle enhetene settes opp på nytt i SG-appen.
+Kommandoene krypteres med nettverkspassordet, vanligvis 1234. Ved feil passord, sjekk Nettverksisolasjon (Network Isolation) i SG-appen. Slå den av for å bruke 1234, eller legg inn hjemmets passord i innstillingene for hver enhet. Slår du den av, må alle enhetene settes opp på nytt i SG-appen.
 
-Krever Homey Pro. Virker ikke med Homey Bridge eller SG Smart 3.0. SG Smart 3.0 kan kobles til Homey via SG Smart Gateway 3.0 og Matter. Appen er uoffisiell og ikke laget eller støttet av SG. Den bygger på CSRmesh-arbeid fra nkaminski, fromm1990, einaros og erlwes. Kildekoden er åpen.
+Krever Homey Pro. Støtter ikke Homey Bridge eller SG Smart 3.0. Sistnevnte kan kobles til Homey via SG Smart Gateway 3.0 og Matter. Appen er uoffisiell og ikke laget eller støttet av SG. Den bygger på CSRmesh-arbeid fra nkaminski, fromm1990, einaros og erlwes. Kildekoden er åpen.

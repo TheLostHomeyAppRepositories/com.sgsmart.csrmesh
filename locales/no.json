@@ -41,11 +41,11 @@
     },
     "keepConnected": {
       "label": "Hold dimmerne tilkoblet",
-      "hint": "Raskere styring, og endringer fra veggbryteren vises med en gang. Virker bare med LEDDim Smart av første generasjon (@NDxxxx). Har du bare én slik dimmer, får ikke SG-appen på telefonen kontakt med den når innstillingen er på."
+      "hint": "Raskere styring, og endringer fra veggbryteren vises med en gang. Virker bare med LEDDim Smart av første generasjon (@NDxxxx). Har du bare én slik dimmer, får ikke SG-appen på telefonen kontakt med den når innstillingen er på. Slå den av før du legger til en ny enhet i Homey, ellers finner søket den kanskje ikke."
     },
     "signal": {
       "title": "Signal til Homey",
-      "hint": "Vises under Status når du åpner en dimmer av første generasjon. \"Direkte\" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer."
+      "hint": "Vises under \"Forbindelse\" når du åpner en dimmer av første generasjon. \"Direkte\" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer."
     },
     "otherDevice": {
       "title": "Hvilke SG-enheter støttes",
@@ -91,7 +91,7 @@
     "badMeshId": "Enheten har ikke en gyldig mesh id. Slett den og legg den til på nytt."
   },
   "notification": {
-    "passwordWrong": "Mulig feil nettverkspassord i SG LEDDim. Sjekk Nettverksisolasjon (Network Isolation) i SG-appen, eller legg inn riktig passord i innstillingene for hver dimmer."
+    "passwordWrong": "Mulig feil nettverkspassord i SG LEDDim. Sjekk Nettverksisolasjon (Network Isolation) i SG-appen, eller legg inn riktig passord i innstillingene for hver enhet."
   },
   "thermostat": {
     "controlOff": "Styring fra Homey er av for denne termostaten. Slå den på i innstillingene.",

@@ -77,14 +77,20 @@ test('FF05 and FF50: the level counts only when on and 1..100', () => {
   assert.equal(proto.parseExt(Buffer.from([0x01, 0x80, 0x73, 0xf7, 0, 0])), null);
 });
 
-test('products: 64 prefixes, Gen2 to Gen4, @ND not among them; CSRmesh service by its UUID', () => {
-  assert.equal(Object.keys(CSR_PRODUCTS).length, 64);
+test('products: 63 prefixes, Gen2 to Gen4, @ND and @GG not among them; CSRmesh service by its UUID', () => {
+  assert.equal(Object.keys(CSR_PRODUCTS).length, 63);
   assert.deepEqual(csrProductForName('@sc1a2b'), { prefix: '@SC', ...CSR_PRODUCTS['@SC'], icon: 'pill' });
   assert.equal(csrProductForName('@GX1A2B').icon, null); // a switch is not added
   assert.equal(csrProductForName('@SC1A2B').name, 'LEDDim Smart Pill');
   assert.equal(csrProductForName('@GX1A2B').kind, 'switch');
   assert.equal(csrProductForName('@MW1A2B').tunableWhite, true);
   assert.equal(csrProductForName('@ND1A2B'), null);
+  // A gateway's node may be named @GG: not a Color Controller; @GU still is.
+  assert.equal(csrProductForName('@GG7A8C'), null);
+  assert.equal(csrProductForName('@GU7A8C').name, 'LEDDim Smart Color Controller');
+  assert.equal(canBeBridge('@GG7A8C'), false);
+  const found = laterFindings([{ localName: '@GG7A8C', rssi: -60 }, { localName: '@GU7A8D', rssi: -60 }], []);
+  assert.deepEqual(withStates(found, 'sg_mesh', new Set()).map((f) => [f.name, f.state]), [['@GU7A8D', 'notYet']]);
   assert.equal(csrProductForName('Phone'), null);
   assert.equal(isCsrmeshAdvertisement({ serviceUuids: [FEF1] }), true);
   assert.equal(isCsrmeshAdvertisement({ serviceUuids: ['fef1'] }), true);

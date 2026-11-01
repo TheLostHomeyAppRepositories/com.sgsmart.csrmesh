@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.sgsmart.csrmesh",
-  "version": "2.5.1",
+  "version": "2.6.0",
   "compatibility": ">=12.2.0",
   "sdk": 3,
   "platforms": [
@@ -12,8 +12,8 @@
     "no": "SG LEDDim"
   },
   "description": {
-    "en": "Gateway-free Bluetooth dimming for the lights that were smart before the hub arrived.",
-    "no": "Bluetooth-dimming uten gateway, for lysene som var smarte før smarthuset kom."
+    "en": "SG Smart dimmers, plugs and thermostats, without a gateway.",
+    "no": "Dimmere, plugger og termostater fra SG Smart, uten gateway."
   },
   "category": [
     "lights"
@@ -173,8 +173,8 @@
                 "no": "Nettverkspassord"
               },
               "hint": {
-                "en": "The CSRmesh passphrase for your installation. It is 1234, unless \"Network Isolation\" is on in the SG app: turn it off there, which sets it back to 1234. Then all devices must be set up again in the SG app. If you have your home's password, you can enter it here instead: the same one in every dimmer.",
-                "no": "CSRmesh-passordet for installasjonen din. Det er 1234, med mindre \"Nettverksisolasjon (Network Isolation)\" er slått på i SG-appen: slå den av der, så blir det 1234 igjen. Da må alle enhetene settes opp på nytt i SG-appen. Har du passordet for hjemmet ditt, kan du i stedet skrive det inn her: det samme i hver dimmer."
+                "en": "The CSRmesh passphrase for your installation. It is 1234, unless \"Network Isolation\" is on in the SG app: turn it off there, which sets it back to 1234. Then all devices must be set up again in the SG app. If you have your home's password, you can enter it here instead: the same one in each device.",
+                "no": "CSRmesh-passordet for installasjonen din. Det er 1234, med mindre \"Nettverksisolasjon (Network Isolation)\" er slått på i SG-appen: slå den av der, så blir det 1234 igjen. Da må alle enhetene settes opp på nytt i SG-appen. Har du passordet for hjemmet ditt, kan du i stedet skrive det inn her: det samme i hver enhet."
               }
             },
             {
@@ -288,8 +288,8 @@
                 "no": "Nettverkspassord"
               },
               "hint": {
-                "en": "The CSRmesh passphrase for your installation. It is 1234, unless \"Network Isolation\" is on in the SG app: turn it off there, which sets it back to 1234. Then all devices must be set up again in the SG app. If you have your home's password, you can enter it here instead: the same one in every dimmer.",
-                "no": "CSRmesh-passordet for installasjonen din. Det er 1234, med mindre \"Nettverksisolasjon (Network Isolation)\" er slått på i SG-appen: slå den av der, så blir det 1234 igjen. Da må alle enhetene settes opp på nytt i SG-appen. Har du passordet for hjemmet ditt, kan du i stedet skrive det inn her: det samme i hver dimmer."
+                "en": "The CSRmesh passphrase for your installation. It is 1234, unless \"Network Isolation\" is on in the SG app: turn it off there, which sets it back to 1234. Then all devices must be set up again in the SG app. If you have your home's password, you can enter it here instead: the same one in each device.",
+                "no": "CSRmesh-passordet for installasjonen din. Det er 1234, med mindre \"Nettverksisolasjon (Network Isolation)\" er slått på i SG-appen: slå den av der, så blir det 1234 igjen. Da må alle enhetene settes opp på nytt i SG-appen. Har du passordet for hjemmet ditt, kan du i stedet skrive det inn her: det samme i hver enhet."
               }
             },
             {
@@ -378,8 +378,8 @@
                 "no": "Nettverkspassord"
               },
               "hint": {
-                "en": "The CSRmesh passphrase for your installation. It is 1234, unless \"Network Isolation\" is on in the SG app: turn it off there, which sets it back to 1234. Then all devices must be set up again in the SG app. If you have your home's password, you can enter it here instead: the same one in every dimmer.",
-                "no": "CSRmesh-passordet for installasjonen din. Det er 1234, med mindre \"Nettverksisolasjon (Network Isolation)\" er slått på i SG-appen: slå den av der, så blir det 1234 igjen. Da må alle enhetene settes opp på nytt i SG-appen. Har du passordet for hjemmet ditt, kan du i stedet skrive det inn her: det samme i hver dimmer."
+                "en": "The CSRmesh passphrase for your installation. It is 1234, unless \"Network Isolation\" is on in the SG app: turn it off there, which sets it back to 1234. Then all devices must be set up again in the SG app. If you have your home's password, you can enter it here instead: the same one in each device.",
+                "no": "CSRmesh-passordet for installasjonen din. Det er 1234, med mindre \"Nettverksisolasjon (Network Isolation)\" er slått på i SG-appen: slå den av der, så blir det 1234 igjen. Da må alle enhetene settes opp på nytt i SG-appen. Har du passordet for hjemmet ditt, kan du i stedet skrive det inn her: det samme i hver enhet."
               }
             },
             {
@@ -544,8 +544,8 @@
                 "no": "Nettverkspassord"
               },
               "hint": {
-                "en": "The CSRmesh passphrase for your installation. It is 1234, unless \"Network Isolation\" is on in the SG app: turn it off there, which sets it back to 1234. Then all devices must be set up again in the SG app. If you have your home's password, you can enter it here instead: the same one in every dimmer.",
-                "no": "CSRmesh-passordet for installasjonen din. Det er 1234, med mindre \"Nettverksisolasjon (Network Isolation)\" er slått på i SG-appen: slå den av der, så blir det 1234 igjen. Da må alle enhetene settes opp på nytt i SG-appen. Har du passordet for hjemmet ditt, kan du i stedet skrive det inn her: det samme i hver dimmer."
+                "en": "The CSRmesh passphrase for your installation. It is 1234, unless \"Network Isolation\" is on in the SG app: turn it off there, which sets it back to 1234. Then all devices must be set up again in the SG app. If you have your home's password, you can enter it here instead: the same one in each device.",
+                "no": "CSRmesh-passordet for installasjonen din. Det er 1234, med mindre \"Nettverksisolasjon (Network Isolation)\" er slått på i SG-appen: slå den av der, så blir det 1234 igjen. Da må alle enhetene settes opp på nytt i SG-appen. Har du passordet for hjemmet ditt, kan du i stedet skrive det inn her: det samme i hver enhet."
               }
             },
             {
@@ -1040,8 +1040,8 @@
     "sg_connection": {
       "type": "string",
       "title": {
-        "en": "Status",
-        "no": "Status"
+        "en": "Link",
+        "no": "Forbindelse"
       },
       "getable": true,
       "setable": false,

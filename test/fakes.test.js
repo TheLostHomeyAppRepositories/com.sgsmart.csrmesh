@@ -40,6 +40,11 @@ test('.homeyignore leaves lib/fake/ and dev/ out', () => {
   assert.ok(lines.includes('dev/'));
 });
 
+test('an editor workspace file in the app folder is not in a build', async () => {
+  assert.ok(fs.existsSync(path.join(ROOT, 'drivers', 'sg_group', 'com.sgsmart.csrmesh.code-workspace')));
+  assert.deepEqual((await buildFiles()).filter((file) => file.endsWith('.code-workspace')), []);
+});
+
 test('a build from the app folder has no fake device and no dev script, but has what loads them', async () => {
   const files = await buildFiles();
   assert.ok(files.includes('app.js') && files.includes('lib/SGCsrDevice.js') && files.includes('lib/fakeDevices.js'));

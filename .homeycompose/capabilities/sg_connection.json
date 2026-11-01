@@ -1,8 +1,8 @@
 {
   "type": "string",
   "title": {
-    "en": "Status",
-    "no": "Status"
+    "en": "Link",
+    "no": "Forbindelse"
   },
   "getable": true,
   "setable": false,

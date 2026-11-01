@@ -41,11 +41,11 @@
     },
     "keepConnected": {
       "label": "Keep dimmers connected",
-      "hint": "Faster control, and changes made at the wall switch appear immediately. Only works with first-generation LEDDim Smart (@NDxxxx). If you only have one such dimmer, the SG app on your phone cannot reach it while this setting is on."
+      "hint": "Faster control, and changes made at the wall switch appear immediately. Only works with first-generation LEDDim Smart (@NDxxxx). If you only have one such dimmer, the SG app on your phone cannot reach it while this setting is on. Turn it off before adding a new device in Homey, or the search may not find it."
     },
     "signal": {
       "title": "Signal to Homey",
-      "hint": "Shown under Status when you open a first-generation dimmer. \"Direct\" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer."
+      "hint": "Shown under \"Link\" when you open a first-generation dimmer. \"Direct\" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer."
     },
     "otherDevice": {
       "title": "Which SG devices are supported",
@@ -91,7 +91,7 @@
     "badMeshId": "This device has no valid mesh id. Delete it and add it again."
   },
   "notification": {
-    "passwordWrong": "Possibly wrong network password in SG LEDDim. Check Network Isolation in the SG app, or enter the correct password in the settings for each dimmer."
+    "passwordWrong": "Possibly wrong network password in SG LEDDim. Check Network Isolation in the SG app, or enter the correct password in the settings for each device."
   },
   "thermostat": {
     "controlOff": "Control from Homey is off for this thermostat. Turn it on in its settings.",

@@ -6,3 +6,4 @@ CLAUDE.md
 test/
 lib/fake/
 dev/
+*.code-workspace

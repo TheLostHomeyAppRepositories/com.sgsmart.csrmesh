@@ -2,7 +2,7 @@
 
 // What the texts say about the network password (2.4.1). The warnings on a
 // tile are short (Homey shows them only briefly). The explanation, "Network
-// Isolation" first or the password in every dimmer, is in the settings hint,
+// Isolation" first or the password in each device, is in the settings hint,
 // the READMEs and the timeline notification; where a text says to turn it off,
 // it says that all devices must then be set up again. README says one thing
 // about 1234. Run with: node --test test/*.test.js
@@ -20,10 +20,14 @@ const hint = network.children.find((setting) => setting.id === 'passphrase').hin
 const readme = read('README.md');
 const setup = readme.slice(readme.indexOf('## Setup'), readme.indexOf('## How it works'));
 
-const EVERY_DIMMER = /every\s+dimmer|each\s+dimmer|hver\s+dimmer/;
+const EACH_DEVICE = /each\s+device|hver\s+enhet/;
+const PER_DIMMER = /every\s+dimmer|each\s+dimmer|hver\s+dimmer/;
+// README.md is not changed with the other texts and may still say "every
+// dimmer".
+const eachIn = (name) => (name === 'README.md' ? /each\s+device|every\s+dimmer/ : EACH_DEVICE);
 const WARNING_MAX = 80;
 
-// Every text that explains the fix, and the words for "every dimmer".
+// Every text that explains the fix, and the words for "each device".
 const advice = [
   ['README.md', setup],
   ['README.txt', read('README.txt')],
@@ -42,14 +46,17 @@ for (const [language, locale] of [['en', en], ['no', no]]) {
   }
 }
 
-test('the settings hint, the READMEs and the timeline say: the same password in every dimmer', () => {
-  for (const [name, text] of advice) assert.match(text, EVERY_DIMMER, name);
+test('the settings hint, the READMEs and the timeline say: the same password in each device', () => {
+  for (const [name, text] of advice) {
+    assert.match(text, eachIn(name), name);
+    if (name !== 'README.md') assert.doesNotMatch(text, PER_DIMMER, name);
+  }
 });
 
 test('there, turning Network Isolation off comes first, entering the password second', () => {
   for (const [name, text] of advice) {
     const isolation = text.indexOf('Network Isolation');
-    assert.ok(isolation >= 0 && EVERY_DIMMER.test(text.slice(isolation)), name);
+    assert.ok(isolation >= 0 && eachIn(name).test(text.slice(isolation)), name);
   }
 });
 
@@ -57,14 +64,15 @@ test(`warnings are at most ${WARNING_MAX} characters, without the long explanati
   for (const [name, text] of warnings) {
     assert.ok(text.length > 0 && text.length <= WARNING_MAX, `${name}: ${text.length}`);
     assert.doesNotMatch(text, /Network Isolation/, name);
-    assert.doesNotMatch(text, EVERY_DIMMER, name);
+    assert.doesNotMatch(text, EACH_DEVICE, name);
+    assert.doesNotMatch(text, PER_DIMMER, name);
   }
 });
 
-test('README quotes the warning as it is; the store texts name it', () => {
+test('README quotes the warning as it is; the store texts say what to check', () => {
   assert.ok(setup.replace(/\s+/g, ' ').includes(`"${en.device.passwordWrong}"`));
-  assert.match(read('README.txt'), /If you get a wrong password warning, check Network Isolation in the SG app\./);
-  assert.match(read('README.no.txt'), /Får du varsel om feil passord, sjekk Nettverksisolasjon \(Network Isolation\) i SG-appen\./);
+  assert.match(read('README.txt'), /If Homey warns about the password, check Network Isolation in the SG app\./);
+  assert.match(read('README.no.txt'), /Ved feil passord, sjekk Nettverksisolasjon \(Network Isolation\) i SG-appen\./);
 });
 
 test('the Norwegian texts say Nettverksisolasjon (Network Isolation), the English ones Network Isolation as before', () => {
@@ -89,7 +97,8 @@ test('the Norwegian texts say Nettverksisolasjon (Network Isolation), the Englis
 // forms: on its own ("If you turn it off") or right after the advice ("Then").
 const SET_UP_AGAIN = {
   en: ['If you turn it off, all devices must be set up again in the SG app.',
-    'Then all devices must be set up again in the SG app.'],
+    'Then all devices must be set up again in the SG app.',
+    'Turning it off means all devices must be set up again in the SG app.'],
   no: ['Slår du den av, må alle enhetene settes opp på nytt i SG-appen.',
     'Da må alle enhetene settes opp på nytt i SG-appen.'],
 };
@@ -146,15 +155,15 @@ test('straight quotes only, in every text', () => {
   }
 });
 
-test('every text in both languages, the store texts and the 2.5.0 changelog: straight quotes, no ellipsis or dashes, the same placeholders', () => {
+test('every text in both languages, the store texts and the 2.5.0 and 2.6.0 changelogs: straight quotes, no ellipsis or dashes, the same placeholders', () => {
   const leaves = (o, p = '') => Object.entries(o).flatMap(([k, v]) => (typeof v === 'object' ? leaves(v, `${p}${k}.`) : [[`${p}${k}`, v]]));
   const tokens = (text) => (text.match(/__[a-z]+__/g) || []).sort();
   const noTexts = Object.fromEntries(leaves(no));
   assert.deepEqual(leaves(en).map(([key]) => key).sort(), Object.keys(noTexts).sort());
   for (const [key, text] of leaves(en)) assert.deepEqual(tokens(text), tokens(noTexts[key]), key);
-  const changelog = JSON.parse(read('.homeychangelog.json'))['2.5.0'];
+  const changelogs = JSON.parse(read('.homeychangelog.json'));
   const texts = [...leaves(en), ...leaves(no), ['README.txt', read('README.txt')], ['README.no.txt', read('README.no.txt')],
-    ['changelog en', changelog.en], ['changelog no', changelog.no]];
+    ...['2.5.0', '2.6.0'].flatMap((version) => [[`changelog ${version} en`, changelogs[version].en], [`changelog ${version} no`, changelogs[version].no]])];
   for (const [name, text] of texts) assert.doesNotMatch(text, /[“”‘’«»…–—]/, name);
   assert.deepEqual(tokens(en.pair.found.notYet), ['__products__']);
   assert.deepEqual(tokens(en.settings.log.summary), ['__count__', '__from__', '__to__']);
@@ -214,9 +223,12 @@ test('no text asks for other SG devices named @ND: only the first generation LED
   assert.ok(page.includes('<li data-i18n="settings.otherDevice.other">'));
   assert.equal((page.match(/<li>|<li /g) || []).length, 6, 'six points');
   assert.doesNotMatch(read('README.txt') + read('README.no.txt'), /Show log|Vis logg/);
-  // 2.5.0: later generations and the Pill can be tried, and the store texts say so, without URLs.
-  assert.match(read('README.txt'), /The first generation \(@NDxxxx in Bluetooth\) is stable\. Later generations and LEDDim Smart Pill are being tested\./);
-  assert.match(read('README.no.txt'), /Første generasjon \(@NDxxxx i Bluetooth\) er stabil\. Senere generasjoner og LEDDim Smart Pill er under utprøving\./);
+  // 2.6.0: later generations, the Pill, the plugs and the thermostat can be tried, and the store texts say so, without URLs.
+  assert.match(read('README.txt'), /The first generation \(@NDxxxx in Bluetooth\) works reliably\. Later generations, LEDDim Smart Pill, Smart Plug, Smart Socket and the HeatReg Smart floor thermostat are being tested\./);
+  assert.match(read('README.no.txt'), /Første generasjon \(@NDxxxx i Bluetooth\) fungerer stabilt\. Nyere generasjoner, LEDDim Smart Pill, Smart Plug, Smart Socket og gulvtermostaten HeatReg Smart er under utprøving\./);
+  // The first point of the guide before a search, word for word.
+  assert.ok(read('README.txt').includes(` ${en.pair.guide.setupFirst} `));
+  assert.ok(read('README.no.txt').includes(` ${no.pair.guide.setupFirst} `));
   assert.doesNotMatch(read('README.txt') + read('README.no.txt'), /https?:\/\//);
   assert.match(setup, /Add a \*\*LEDDim Smart\*\* device/);
   assert.match(setup, /added as \*\*LEDDim Smart Pill\*\*/);
@@ -387,10 +399,10 @@ test('the settings page follows Homey\'s form pattern: every section a titled fi
   for (const locale of [en, no]) assert.match(locale.settings.keepConnected.hint, /LEDDim Smart .*\(@NDxxxx\)\./);
   assert.equal(no.settings.connection.title, 'Tilkobling');
   assert.equal(en.settings.connection.title, 'Connection');
-  assert.match(no.settings.keepConnected.hint, /får ikke SG-appen på telefonen kontakt med den når innstillingen er på\.$/);
-  assert.match(en.settings.keepConnected.hint, /the SG app on your phone cannot reach it while this setting is on\.$/);
-  assert.equal(no.settings.signal.hint, 'Vises under Status når du åpner en dimmer av første generasjon. "Direkte" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer.');
-  assert.equal(en.settings.signal.hint, 'Shown under Status when you open a first-generation dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.');
+  assert.match(no.settings.keepConnected.hint, /får ikke SG-appen på telefonen kontakt med den når innstillingen er på\. Slå den av før du legger til en ny enhet i Homey, ellers finner søket den kanskje ikke\.$/);
+  assert.match(en.settings.keepConnected.hint, /the SG app on your phone cannot reach it while this setting is on\. Turn it off before adding a new device in Homey, or the search may not find it\.$/);
+  assert.equal(no.settings.signal.hint, 'Vises under "Forbindelse" når du åpner en dimmer av første generasjon. "Direkte" betyr at dimmeren har kontakt med Homey. Andre dimmere nås via denne. Svakt signal? Flytt Homey nærmere en dimmer.');
+  assert.equal(en.settings.signal.hint, 'Shown under "Link" when you open a first-generation dimmer. "Direct" means the dimmer is connected to Homey. Other dimmers are reached through it. Weak signal? Move Homey closer to a dimmer.');
   assert.ok(page.includes(en.settings.signal.hint));
   assert.doesNotMatch(page, /<style>/, 'no CSS of its own');
   assert.ok(page.includes(en.settings.keepConnected.hint));

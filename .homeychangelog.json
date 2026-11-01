@@ -67,5 +67,9 @@
   "2.5.1": {
     "en": "Later generations of LEDDim Smart and LEDDim Smart Pill can now be added and controlled, but are being tested. New instructions before searching for devices. The settings have been cleaned up, and you can now view and copy the log there. HeatReg Smart floor thermostats are now asked for their temperatures and settings, and the answers go to the log. They cannot be added yet.",
     "no": "Senere generasjoner av LEDDim Smart og LEDDim Smart Pill kan nå legges til og styres, men er under utprøving. Ny veiledning før søk etter enheter. Innstillingene er ryddigere, og du kan nå vise og kopiere loggen der. HeatReg Smart-gulvtermostater blir nå spurt om temperatur og innstillinger, og svarene havner i loggen. De kan ikke legges til ennå."
+  },
+  "2.6.0": {
+    "en": "Later generations of LEDDim Smart and LEDDim Smart Pill can now be added and controlled. Smart Plug and Smart Socket can be added, with on and off and a countdown. HeatReg Smart floor thermostats can be added: Homey shows the temperatures and can set the target temperature, on and off and the preset. All of these are being tested. New instructions before searching for devices. The settings have been cleaned up, and you can now view and copy the log there.",
+    "no": "Senere generasjoner av LEDDim Smart og LEDDim Smart Pill kan nå legges til og styres. Smart Plug og Smart Socket kan legges til, med av og på og nedtelling. HeatReg Smart-gulvtermostater kan legges til: Homey viser temperaturene og kan sette ønsket temperatur, av og på og forhåndsinnstillingen. Alt dette er under utprøving. Ny veiledning før søk etter enheter. Innstillingene er ryddigere, og du kan nå vise og kopiere loggen der."
   }
 }

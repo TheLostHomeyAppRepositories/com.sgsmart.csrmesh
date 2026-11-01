@@ -1,6 +1,6 @@
 {
   "id": "com.sgsmart.csrmesh",
-  "version": "2.5.1",
+  "version": "2.6.0",
   "compatibility": ">=12.2.0",
   "sdk": 3,
   "platforms": [
@@ -11,8 +11,8 @@
     "no": "SG LEDDim"
   },
   "description": {
-    "en": "Gateway-free Bluetooth dimming for the lights that were smart before the hub arrived.",
-    "no": "Bluetooth-dimming uten gateway, for lysene som var smarte før smarthuset kom."
+    "en": "SG Smart dimmers, plugs and thermostats, without a gateway.",
+    "no": "Dimmere, plugger og termostater fra SG Smart, uten gateway."
   },
   "category": [
     "lights"
