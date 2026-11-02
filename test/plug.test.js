@@ -147,15 +147,17 @@ test('a search that finds only recalled plugs shows the recall text instead of a
   await assert.rejects(session.handlers.list_devices(), { message: 'pair.found.recalled' });
 });
 
-test('the recall texts in Norwegian and English: the long one with the recall page when adding, a short warning on the device; a line in the 2.6.0 changelog', () => {
+test('the recall texts in Norwegian and English: the long one with the recall page when adding, a short warning on the device; a line in the 2.6.0 and 2.6.1 changelogs', () => {
   const [no, en] = ['no', 'en'].map((language) => JSON.parse(read(`locales/${language}.json`)));
   assert.equal(no.pair.found.recalled, `Fant en Smart Plug som SG har tilbakekalt. Den kan ikke legges til. Les mer: ${RECALL_PAGE}`);
   assert.equal(en.pair.found.recalled, `Found a Smart Plug recalled by SG. It cannot be added. Read more: ${RECALL_PAGE}`);
   assert.equal(no.device.recalled, 'Tilbakekalt av SG. Se sg-as.com.');
   assert.equal(en.device.recalled, 'Recalled by SG. See sg-as.com.');
-  const changelog = JSON.parse(read('.homeychangelog.json'))['2.6.0'];
-  assert.ok(changelog.no.includes(' Smart Plug som SG har tilbakekalt, kan ikke legges til. '));
-  assert.ok(changelog.en.includes(' Smart Plugs recalled by SG cannot be added. '));
+  for (const version of ['2.6.0', '2.6.1']) {
+    const changelog = JSON.parse(read('.homeychangelog.json'))[version];
+    assert.ok(changelog.no.includes(' Smart Plug som SG har tilbakekalt, kan ikke legges til. '), version);
+    assert.ok(changelog.en.includes(' Smart Plugs recalled by SG cannot be added. '), version);
+  }
 });
 
 // ---- the device: on, off and the countdown
