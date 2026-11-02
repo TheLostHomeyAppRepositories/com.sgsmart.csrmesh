@@ -579,8 +579,8 @@
                 "no": "Styr fra Homey (under utprøving)"
               },
               "hint": {
-                "en": "On (default): Homey sends the target temperature, on and off and the preset to the thermostat, once for each change. Control from Homey is new and not yet tried with a real HeatReg Smart. Turn it off if something does not work as it should: Homey then only reads the thermostat, and changes made in Homey are refused.",
-                "no": "På (standard): Homey sender ønsket temperatur, av og på og forhåndsinnstillingen til termostaten, én gang per endring. Styringen fra Homey er ny og ennå ikke prøvd med en ekte HeatReg Smart. Slå den av hvis noe ikke virker som det skal: da leser Homey bare termostaten, og endringer i Homey avvises."
+                "en": "On (default): Homey sends the target temperature, on and off and the preset to the thermostat. Control from Homey is new and not yet tried with a real HeatReg Smart. Turn it off if something does not work as it should: Homey then only reads the thermostat, and changes made in Homey are refused.",
+                "no": "På (standard): Homey sender ønsket temperatur, av og på og forhåndsinnstillingen til termostaten. Styringen fra Homey er ny og ennå ikke prøvd med en ekte HeatReg Smart. Slå den av hvis noe ikke virker som det skal: da leser Homey bare termostaten, og endringer i Homey avvises."
               }
             },
             {

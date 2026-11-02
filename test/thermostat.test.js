@@ -104,8 +104,8 @@ test('the settings: "Control from Homey (being tried out)" on, the sensor Floor,
   assert.deepEqual([byId.control_from_homey.type, byId.control_from_homey.value], ['checkbox', true]);
   assert.deepEqual(byId.control_from_homey.label, { en: 'Control from Homey (being tried out)', no: 'Styr fra Homey (under utprøving)' });
   assert.deepEqual(byId.control_from_homey.hint, {
-    en: 'On (default): Homey sends the target temperature, on and off and the preset to the thermostat, once for each change. Control from Homey is new and not yet tried with a real HeatReg Smart. Turn it off if something does not work as it should: Homey then only reads the thermostat, and changes made in Homey are refused.',
-    no: 'På (standard): Homey sender ønsket temperatur, av og på og forhåndsinnstillingen til termostaten, én gang per endring. Styringen fra Homey er ny og ennå ikke prøvd med en ekte HeatReg Smart. Slå den av hvis noe ikke virker som det skal: da leser Homey bare termostaten, og endringer i Homey avvises.',
+    en: 'On (default): Homey sends the target temperature, on and off and the preset to the thermostat. Control from Homey is new and not yet tried with a real HeatReg Smart. Turn it off if something does not work as it should: Homey then only reads the thermostat, and changes made in Homey are refused.',
+    no: 'På (standard): Homey sender ønsket temperatur, av og på og forhåndsinnstillingen til termostaten. Styringen fra Homey er ny og ennå ikke prøvd med en ekte HeatReg Smart. Slå den av hvis noe ikke virker som det skal: da leser Homey bare termostaten, og endringer i Homey avvises.',
   });
   assert.deepEqual([byId.sensor.value, byId.sensor.values.map((v) => v.id)], ['floor', ['floor', 'room', 'roomFloor']]);
   assert.deepEqual(byId.sensor.hint, {
@@ -233,7 +233,7 @@ test('control from Homey off: every change is refused with the message, and noth
   assert.ok(device.logs.includes('preset eco refused: control from Homey is off, nothing sent'));
 });
 
-test('control on: the set point is one FF3E, rounded to 0.5 and kept within 5 to 35, nothing when the thermostat has it', async () => {
+test('control on: the set point is FF3E, rounded to 0.5 and kept within 5 to 35, nothing when the thermostat has it', async () => {
   await withClock(async (clock) => {
     const { device, sent } = await thermostat({ settings: { control_from_homey: true } });
     device.applyThermostat('FF05', status({ setPoint: 21 }));
@@ -248,7 +248,7 @@ test('control on: the set point is one FF3E, rounded to 0.5 and kept within 5 to
   });
 });
 
-test('control on: on and off are one FF42 from either onoff or the mode, and the other follows; a preset is one FF03 in the thermostat\'s format', async () => {
+test('control on: on and off are one FF42 from either onoff or the mode, and the other follows; a preset is FF03 in the thermostat\'s format', async () => {
   const { device, sent } = await thermostat({ settings: { control_from_homey: true } });
   device.applyThermostat('FF05', status({ on: true }));
   await device._power(false, 'onoff');
@@ -431,6 +431,15 @@ test('the network reads a thermostat only when it is added, hands its answers an
     app.csr.handleFrame({ src: 0x8000, plain: Buffer.from([0x01, 0x02, 0xff, 0x3e, 0x5a, 0x3c, 19, 5, 1, 40]) });
     assert.equal(value(device, 'target_temperature'), 19.5);
     assert.ok(app.logs.some((line) => /EXT src=0x8000 dst=0x0201 op=FF3E .* to a thermostat: set point 19.5 tid=40 loc=0x5a3c/.test(line)));
+    // Its FF08 goes to the device: a set point from here is sent no more.
+    await device._setPoint(24);
+    const sentBefore = sentPlains.length;
+    app.csr.handleFrame({ src: MESH_ID, plain: Buffer.from([0x00, 0x80, 0xff, 0x08, 0x5a, 0x3c, 0x3e]) });
+    app.homey.runMs(1000);
+    for (let i = 0; i < 5; i += 1) await tick();
+    assert.equal(sentPlains.length, sentBefore);
+    assert.ok(device.logs.includes('FF3E set point 24.0: acknowledged (FF08) after 1 of 3, no more sent'));
+    assert.ok(app.logs.some((line) => /op=FF08 .*thermostat acknowledged FF3E loc=0x5a3c/.test(line)));
     app.csr.stop();
   });
 });
@@ -477,7 +486,8 @@ test('with the real send queue and a slow link: on/off and a set point both go o
   const packets = [];
   for (let i = 0; i < parts.length; i += 2) packets.push(Buffer.concat([parts[i], parts[i + 1]]));
   assert.deepEqual(packets.map((p) => hexOf(plainOf(p)).slice(0, 14)), ['0102ff425a3c01', '0102ff3e5a3c17']);
-  assert.ok(device.logs.includes('FF3E set point 22.0 not sent: replaced by a newer one'));
+  assert.ok(device.logs.includes('FF3E set point 22.0 (1 of 3) not sent: replaced by a newer one'));
+  assert.ok(device.logs.includes('FF3E set point 22.0: the last 2 of 3 not sent, replaced by a newer setting'));
   assert.ok(!device.logs.some((line) => /^FF42 on not sent/.test(line)));
 });
 
@@ -486,6 +496,103 @@ test('a setting that is not delivered is logged', async () => {
   app.bridge.send = async () => ({ failed: true });
   await device._power(false, 'onoff');
   assert.ok(device.logs.includes('FF42 off not sent: not delivered'));
+});
+
+// ---- a set point or preset: up to three times, until FF08
+
+// A thermostat with control on and its status in; gap() lets the send in
+// flight finish and runs the timer for the next one.
+async function repeating() {
+  const made = await thermostat({ settings: { control_from_homey: true } });
+  made.device.applyThermostat('FF05', status({ on: true, setPoint: 21 }));
+  const gap = async () => {
+    for (let i = 0; i < 5; i += 1) await tick();
+    made.homey.runMs(1000);
+    for (let i = 0; i < 5; i += 1) await tick();
+  };
+  return { ...made, gap };
+}
+const ack = (opcode) => ({ location: LOC, opcode });
+
+test('a set point and a preset go up to three times, 1 s apart, the same message and tid each time; each send is logged; on/off goes once', async () => {
+  await withClock(async () => {
+    const { device, sent, gap, homey } = await repeating();
+    await device._setPoint(22);
+    assert.deepEqual(sent.map(hexOf), ['0102ff3e5a3c16000101']);
+    await gap();
+    await gap();
+    assert.deepEqual(sent.map(hexOf), ['0102ff3e5a3c16000101', '0102ff3e5a3c16000101', '0102ff3e5a3c16000101']);
+    await gap();
+    await gap();
+    assert.equal(sent.length, 3, 'never a fourth');
+    assert.deepEqual([...homey.pending.values()].filter(({ ms }) => ms === 1000), []);
+    for (const n of [1, 2, 3]) assert.ok(device.logs.some((line) => line.startsWith(`FF3E set point 22.0 (${n} of 3) to 0x0201 tid=1 `)), `${n}`);
+    assert.ok(device.logs.includes('FF3E set point 22.0: no acknowledgement (FF08) after 3 of 3'));
+    sent.length = 0;
+    await device._preset('eco');
+    await gap();
+    await gap();
+    await gap();
+    assert.deepEqual(sent.map(hexOf), ['0102ff035a3c00000201', '0102ff035a3c00000201', '0102ff035a3c00000201']);
+    sent.length = 0;
+    await device._power(false, 'onoff');
+    await gap();
+    await gap();
+    assert.deepEqual(sent.map(hexOf), ['0102ff425a3c000003']);
+  });
+});
+
+test('FF08 from the thermostat with 3E (or 03) stops the sends left; one for the other opcode does not', async () => {
+  await withClock(async () => {
+    const { device, sent, gap } = await repeating();
+    await device._setPoint(22);
+    device.applyThermostat('FF08', ack(0xff3e));
+    await gap();
+    await gap();
+    assert.equal(sent.length, 1);
+    assert.ok(device.logs.includes('FF3E set point 22.0: acknowledged (FF08) after 1 of 3, no more sent'));
+    sent.length = 0;
+    await device._preset('eco');
+    await gap();
+    device.applyThermostat('FF08', ack(0xff3e));
+    assert.ok(device.logs.includes('FF08 for FF3E: nothing from here waits for it'));
+    device.applyThermostat('FF08', ack(0xff03));
+    await gap();
+    await gap();
+    assert.equal(sent.length, 2);
+    assert.ok(device.logs.includes('FF03 preset eco: acknowledged (FF08) after 2 of 3, no more sent'));
+    // From another home: not taken.
+    sent.length = 0;
+    await device._setPoint(23);
+    device.applyThermostat('FF08', { location: 0x1234, opcode: 0xff3e });
+    await gap();
+    await gap();
+    assert.equal(sent.length, 3);
+  });
+});
+
+test('a newer set point or preset replaces the sends left of the one before; on/off does not', async () => {
+  await withClock(async () => {
+    const { device, sent, gap } = await repeating();
+    await device._setPoint(22);
+    await gap();
+    await device._setPoint(23);
+    assert.ok(device.logs.includes('FF3E set point 22.0: the last 1 of 3 not sent, replaced by a newer setting'));
+    await gap();
+    await gap();
+    await gap();
+    assert.deepEqual(sent.map((p) => hexOf(p).slice(12, 14)), ['16', '16', '17', '17', '17'], '22 twice, then 23 three times');
+    sent.length = 0;
+    await device._setPoint(24);
+    await device._preset('min');
+    assert.ok(device.logs.includes('FF3E set point 24.0: the last 2 of 3 not sent, replaced by a newer setting'));
+    await device._power(false, 'onoff');
+    await gap();
+    await gap();
+    await gap();
+    assert.deepEqual(sent.map((p) => hexOf(p).slice(4, 8)), ['ff3e', 'ff03', 'ff42', 'ff03', 'ff03'], 'on/off goes in between');
+    assert.ok(!device.logs.some((line) => /^FF03 preset min: the last/.test(line)));
+  });
 });
 
 test('never to mesh id 0, 0x8000, 0x8001 or 0xFFFF; a high mesh id of a device set up later (0x8002 to 0xFFFE) goes, to a light, a Pill, a plug and a thermostat', async () => {
@@ -927,8 +1034,8 @@ test('with the real send queue and a slow link: the set point and the preset sha
   const packets = [];
   for (let i = 0; i < parts.length; i += 2) packets.push(Buffer.concat([parts[i], parts[i + 1]]));
   assert.deepEqual(packets.map((p) => hexOf(plainOf(p)).slice(0, 14)), ['0102ff035a3c00', '0102ff425a3c01']);
-  assert.ok(device.logs.includes('FF03 preset comfort not sent: replaced by a newer one'));
-  assert.ok(device.logs.includes('FF3E set point 22.0 not sent: replaced by a newer one'));
+  assert.ok(device.logs.includes('FF03 preset comfort (1 of 3) not sent: replaced by a newer one'));
+  assert.ok(device.logs.includes('FF3E set point 22.0 (1 of 3) not sent: replaced by a newer one'));
 });
 
 test('a fault in a status counts for the temperatures at once; a pause does not keep min from being chosen; L0 says what the thermostat reads', async () => {
