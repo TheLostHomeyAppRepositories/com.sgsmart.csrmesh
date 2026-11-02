@@ -20,6 +20,7 @@
       "noPlug": "Fant ingen Smart Plug eller Smart Socket.",
       "noThermostat": "Fant ingen HeatReg Smart.",
       "notYet": "Fant __products__, som ikke kan legges til ennå.",
+      "recalled": "Fant en Smart Plug som SG har tilbakekalt. Den kan ikke legges til. Les mer: https://www.sg-as.com/no/no/support/tilbakekalling-av-sg-smart-plug",
       "goToDimmer": "Fant __products__. Gå tilbake og velg \"LEDDim Smart\" for å legge til.",
       "goToPill": "Fant __products__. Gå tilbake og velg \"LEDDim Smart Pill\" for å legge til.",
       "goToPlug": "Fant __products__. Gå tilbake og velg \"Smart Plug og Smart Socket\" for å legge til.",
@@ -81,6 +82,7 @@
   "device": {
     "notHeard": "Ingen kontakt med dimmeren. Feil passord eller utenfor rekkevidde?",
     "waitingForStatus": "Venter på første status fra dimmeren.",
+    "recalled": "Tilbakekalt av SG. Se sg-as.com.",
     "passwordWrong": "Mulig feil nettverkspassord. Sjekk innstillingene.",
     "fakeLeftOver": "Testenhet fra en utviklingskjøring. Ingenting sendes. Slett den.",
     "connection": {

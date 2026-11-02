@@ -15,7 +15,7 @@ fake.install();
 
 const { decryptPayload, deriveNetworkKey } = require('../lib/csrmesh');
 const {
-  CSR_PRODUCTS, PLUG_PREFIXES, csrDriverFor, csrProductForName,
+  CSR_PRODUCTS, PLUG_PREFIXES, RECALLED_PREFIXES, csrDriverFor, csrProductForName,
 } = require('../lib/sgProducts');
 const { foundNote, withStates, laterFindings } = require('../lib/csrPairing');
 const SGPlugDriver = require('../drivers/sg_plug/driver');
@@ -57,7 +57,7 @@ test('sg_plug adds Smart Plug (Gen2 to Gen4) and Smart Socket, as sockets with o
 // ---- pairing
 
 const SOCKET = node(MESH_ID, '@GB3C4D');
-const PLUG = node(0x0125, '@SP7A8B');
+const PLUG = node(0x0125, '@GP7A8B');
 const PILL = node(0x0126, '@SC1A2B');
 const DIMMER = node(0x0127, '@GD5E6F');
 const SWITCH = node(0x0128, '@SX9C0D');
@@ -76,10 +76,10 @@ test('pairing: a plug and a socket with a mesh id are listed with their icons, o
   const driver = pairDriver([SOCKET, PLUG, PILL]);
   const { devices, found } = await driver._search();
   assert.deepEqual(found.map((f) => [f.name, f.state]).sort(),
-    [['@GB3C4D', 'add'], ['@SC1A2B', 'elsewhere'], ['@SP7A8B', 'add']]);
+    [['@GB3C4D', 'add'], ['@GP7A8B', 'add'], ['@SC1A2B', 'elsewhere']]);
   assert.deepEqual(devices.map((d) => [d.name, d.data.id, d.icon, d.capabilities.join('+'), d.store.kind, d.store.meshId]), [
     ['Smart Socket 3C4D', '@GB3C4D', '/icons/socket.svg', 'onoff', 'onoff', MESH_ID],
-    ['Smart Plug 7A8B', '@SP7A8B', '/icons/plug.svg', 'onoff', 'onoff', 0x0125],
+    ['Smart Plug 7A8B', '@GP7A8B', '/icons/plug.svg', 'onoff', 'onoff', 0x0125],
   ]);
   const again = await pairDriver([SOCKET], ['@GB3C4D'])._search();
   assert.deepEqual(again.found.map((f) => f.state), ['added']);
@@ -108,6 +108,54 @@ test('pairing in sg_plug with no plug: the list fails with that note', async () 
   await session.handlers.showView('loading');
   await assert.rejects(session.handlers.list_devices(),
     { message: 'pair.found.noPlug pair.found.goToPill {"products":"LEDDim Smart Pill"}' });
+});
+
+// ---- recalled: Smart Plug @MP and @SP
+
+const RECALLED = [node(0x0129, '@MP1A2C'), node(0x012a, '@SP3C4E')];
+const RECALL_PAGE = 'https://www.sg-as.com/no/no/support/tilbakekalling-av-sg-smart-plug';
+
+test('recalled Smart Plug @MP and @SP: never offered when adding, also next to a plug and a socket that are; @GP and @GB as before', async () => {
+  assert.deepEqual(RECALLED_PREFIXES, ['@MP', '@SP']);
+  const driver = pairDriver([...RECALLED, PLUG, SOCKET]);
+  const { devices, found } = await driver._search();
+  assert.deepEqual(found.map((f) => [f.name, f.state]).sort(),
+    [['@GB3C4D', 'add'], ['@GP7A8B', 'add'], ['@MP1A2C', 'recalled'], ['@SP3C4E', 'recalled']]);
+  assert.deepEqual(devices.map((d) => d.data.id).sort(), ['@GB3C4D', '@GP7A8B']);
+  assert.ok(driver.logs.some((line) => line.includes('@MP Gen2 onoff recalled') && line.includes('@SP Gen3 onoff recalled')));
+  // Added before, or found by another driver: still recalled, never offered.
+  assert.deepEqual((await pairDriver(RECALLED, ['@MP1A2C'])._search()).found.map((f) => f.state), ['recalled', 'recalled']);
+  for (const driverId of ['sg_mesh', 'sg_pill', 'sg_thermostat']) {
+    assert.deepEqual(withStates(laterFindings([], RECALLED), driverId, new Set()).map((f) => f.state), ['recalled', 'recalled']);
+  }
+});
+
+test('a search that finds only recalled plugs shows the recall text instead of a list, in every driver; "none found" only where they would have been added', async () => {
+  const __ = (key, tokens) => (tokens ? `${key} ${JSON.stringify(tokens)}` : key);
+  const note = (nodes, driverId) => foundNote(withStates(laterFindings([], nodes), driverId, new Set()), __, driverId);
+  assert.equal(note(RECALLED, 'sg_plug'), 'pair.found.recalled');
+  assert.equal(note(RECALLED, 'sg_pill'), 'pair.found.noPill pair.found.recalled');
+  assert.equal(note(RECALLED, 'sg_mesh'), 'pair.found.noDimmer pair.found.recalled');
+  assert.equal(note(RECALLED, 'sg_thermostat'), 'pair.found.noThermostat pair.found.recalled');
+  assert.equal(note([RECALLED[0], PILL], 'sg_plug'), 'pair.found.goToPill {"products":"LEDDim Smart Pill"} pair.found.recalled');
+  // Next to a plug that can be added, Homey's list has that one only.
+  assert.equal(note([RECALLED[0], PLUG], 'sg_plug'), '');
+  const driver = pairDriver(RECALLED);
+  const session = { handlers: {}, views: [], setHandler(name, handler) { session.handlers[name] = handler; }, showView: async (v) => { session.views.push(v); } };
+  await driver.onPair(session);
+  await session.handlers.showView('loading');
+  await assert.rejects(session.handlers.list_devices(), { message: 'pair.found.recalled' });
+});
+
+test('the recall texts in Norwegian and English: the long one with the recall page when adding, a short warning on the device; a line in the 2.6.0 changelog', () => {
+  const [no, en] = ['no', 'en'].map((language) => JSON.parse(read(`locales/${language}.json`)));
+  assert.equal(no.pair.found.recalled, `Fant en Smart Plug som SG har tilbakekalt. Den kan ikke legges til. Les mer: ${RECALL_PAGE}`);
+  assert.equal(en.pair.found.recalled, `Found a Smart Plug recalled by SG. It cannot be added. Read more: ${RECALL_PAGE}`);
+  assert.equal(no.device.recalled, 'Tilbakekalt av SG. Se sg-as.com.');
+  assert.equal(en.device.recalled, 'Recalled by SG. See sg-as.com.');
+  const changelog = JSON.parse(read('.homeychangelog.json'))['2.6.0'];
+  assert.ok(changelog.no.includes(' Smart Plug som SG har tilbakekalt, kan ikke legges til. '));
+  assert.ok(changelog.en.includes(' Smart Plugs recalled by SG cannot be added. '));
 });
 
 // ---- the device: on, off and the countdown
@@ -151,6 +199,26 @@ async function plug({ store = {}, onoff } = {}) {
 
 const ff03 = (plain) => plain.subarray(0, 4).toString('hex');
 const bytesOf = (plain) => [...plain.subarray(4)];
+
+test('a recalled plug added before: the warning says it is recalled and stays, also over a password warning; on and off still go', async () => {
+  for (const prefix of RECALLED_PREFIXES) {
+    const { device, sent } = await plug({ store: { prefix } });
+    assert.equal(device.warning, 'device.recalled', prefix);
+    assert.ok(device.logs.includes('warning shown: recalled product'), prefix);
+    device.homey.app.statusUnreadableText = () => 'device.passwordWrong';
+    await device.updateAvailability();
+    assert.equal(device.warning, 'device.recalled', prefix);
+    assert.equal(device.available, true, prefix);
+    device._request(100);
+    device._request(0);
+    await tick();
+    assert.deepEqual(sent.map(bytesOf), [[0x5a, 0x3c, 1, 0, 1, 0, 0], [0x5a, 0x3c, 0, 0, 2, 0, 0]], prefix);
+  }
+  for (const prefix of ['@GP', '@GB']) {
+    const { device } = await plug({ store: { prefix } });
+    assert.equal(device.warning, null, prefix);
+  }
+});
 
 test('on and off: one FF03 each, pwr 01 with level 0 for on, 00 00 for off', async () => {
   const { device, sent } = await plug();

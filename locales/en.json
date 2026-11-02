@@ -20,6 +20,7 @@
       "noPlug": "No Smart Plug or Smart Socket found.",
       "noThermostat": "No HeatReg Smart found.",
       "notYet": "Found __products__, which cannot be added yet.",
+      "recalled": "Found a Smart Plug recalled by SG. It cannot be added. Read more: https://www.sg-as.com/no/no/support/tilbakekalling-av-sg-smart-plug",
       "goToDimmer": "Found __products__. Go back and select \"LEDDim Smart\" to add them.",
       "goToPill": "Found __products__. Go back and select \"LEDDim Smart Pill\" to add them.",
       "goToPlug": "Found __products__. Go back and select \"Smart Plug and Smart Socket\" to add them.",
@@ -81,6 +82,7 @@
   "device": {
     "notHeard": "No contact with the dimmer. Wrong password or out of range?",
     "waitingForStatus": "Waiting for the dimmer's first status.",
+    "recalled": "Recalled by SG. See sg-as.com.",
     "passwordWrong": "Possibly wrong network password. Check settings.",
     "fakeLeftOver": "Test device from a development run. Nothing is sent. Delete it.",
     "connection": {
