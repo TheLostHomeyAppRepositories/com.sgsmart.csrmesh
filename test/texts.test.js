@@ -155,7 +155,7 @@ test('straight quotes only, in every text', () => {
   }
 });
 
-test('every text in both languages, the store texts and the 2.5.0, 2.6.0, 2.6.1 and 2.6.2 changelogs: straight quotes, no ellipsis or dashes, the same placeholders', () => {
+test('every text in both languages, the store texts and the 2.5.0, 2.6.0, 2.6.1, 2.6.2 and 2.7.0 changelogs: straight quotes, no ellipsis or dashes, the same placeholders', () => {
   const leaves = (o, p = '') => Object.entries(o).flatMap(([k, v]) => (typeof v === 'object' ? leaves(v, `${p}${k}.`) : [[`${p}${k}`, v]]));
   const tokens = (text) => (text.match(/__[a-z]+__/g) || []).sort();
   const noTexts = Object.fromEntries(leaves(no));
@@ -163,7 +163,7 @@ test('every text in both languages, the store texts and the 2.5.0, 2.6.0, 2.6.1 
   for (const [key, text] of leaves(en)) assert.deepEqual(tokens(text), tokens(noTexts[key]), key);
   const changelogs = JSON.parse(read('.homeychangelog.json'));
   const texts = [...leaves(en), ...leaves(no), ['README.txt', read('README.txt')], ['README.no.txt', read('README.no.txt')],
-    ...['2.5.0', '2.6.0', '2.6.1', '2.6.2'].flatMap((version) => [[`changelog ${version} en`, changelogs[version].en], [`changelog ${version} no`, changelogs[version].no]])];
+    ...['2.5.0', '2.6.0', '2.6.1', '2.6.2', '2.7.0'].flatMap((version) => [[`changelog ${version} en`, changelogs[version].en], [`changelog ${version} no`, changelogs[version].no]])];
   for (const [name, text] of texts) assert.doesNotMatch(text, /[“”‘’«»…–—]/, name);
   assert.deepEqual(tokens(en.pair.found.notYet), ['__products__']);
   assert.deepEqual(tokens(en.settings.log.summary), ['__count__', '__from__', '__to__']);

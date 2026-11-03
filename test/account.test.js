@@ -1,0 +1,584 @@
+'use strict';
+
+// The SG account in the app's settings (2.7.0, lib/account.js): what is
+// kept, the passphrase each device takes, "X of Y answer" with one FF04 per
+// later CSRmesh device, "Forget SG account", the type in the account for
+// pairing, the settings page and its texts. The cloud itself is in
+// test/sky.test.js. Made-up values only. Run with: node --test test/*.test.js
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('fs');
+const path = require('path');
+const util = require('util');
+
+const fake = require('./helpers/fake-homey');
+
+fake.install();
+
+const { deriveNetworkKey, resolveKey } = require('../lib/csrmesh');
+const {
+  INTERFACE_VERSION, SETTING, SgAccount, loadAccountModule,
+} = require('../lib/account');
+const {
+  CSR_PRODUCTS, FIRST_GENERATION_TYPE, TYPE_PREFIXES, csrProductForType, driverForType, familyForType,
+} = require('../lib/sgProducts');
+const {
+  accountFindings, laterFindings, pairInLoadingView, quietInAccount, typeDisagreements, withStates,
+} = require('../lib/csrPairing');
+const api = require('../api');
+const SGSmartApp = require('../app');
+const SGCsrDevice = require('../lib/SGCsrDevice');
+const SGMeshDevice = require('../lib/SGDeviceBase');
+const SGThermostatDevice = require('../lib/SGThermostatDevice');
+
+const ROOT = path.join(__dirname, '..');
+const read = (file) => fs.readFileSync(path.join(ROOT, file), 'utf8');
+
+const EMAIL = 'tester@example.invalid';
+const PASSWORD = 'made-up pass 7';
+const ISOLATED = 'c0ffee12';
+const NET_KEY = 'a1'.repeat(16);
+const APP_KEY = 'b2'.repeat(16);
+
+// Two homes as the account module gives them: home 1 isolated, with its
+// location id, two first generation dimmers, a Pill, a plug, a 3.0 device and
+// one without a mesh id; home 2 at 1234, without a location id, with the same
+// Pill's mesh id and a dimmer of its own.
+const HOMES = () => [
+  {
+    passphrase: ISOLATED, netKey: NET_KEY, appKey: APP_KEY, locationId: 0x4242,
+    devices: [
+      { meshId: 0x8001, type: FIRST_GENERATION_TYPE }, { meshId: 0x8002, type: FIRST_GENERATION_TYPE },
+      { meshId: 0x8003, type: 1004 }, { meshId: 0x8004, type: 2002 }, { meshId: 0x8005, type: 3005 },
+      { meshId: null, type: 7 },
+    ],
+  },
+  {
+    passphrase: '1234', netKey: NET_KEY, appKey: APP_KEY, locationId: null,
+    devices: [{ meshId: 0x8003, type: 1004 }, { meshId: 0x8006, type: 1 }],
+  },
+];
+
+const tick = () => new Promise((resolve) => setImmediate(resolve));
+
+// An error as the account module gives one: a code, and a message without
+// values. Made-up messages.
+const accountError = (code, message) => Object.assign(new Error(message), { code });
+
+// Settings as Homey keeps them, with unset.
+function fakeSettings() {
+  const values = new Map();
+  return {
+    values,
+    get: (key) => (values.has(key) ? values.get(key) : null),
+    set: (key, value) => values.set(key, value),
+    unset: (key) => values.delete(key),
+  };
+}
+
+// An app as SgAccount needs it: the devices added, the first generation
+// dimmers heard lately, and a CsrNetwork whose FF04s are recorded; a mesh id
+// in answering answers its FF04 with a frame.
+function accountApp({ devices = [], heard = [], answering = [], nodes = new Map(), known = [] } = {}) {
+  const app = {
+    logs: [],
+    errors: [],
+    sent: [],
+    log(...args) { app.logs.push(args.join(' ')); },
+    error(...args) { app.errors.push(args.join(' ')); },
+    _devices: () => devices,
+    recentlyHeard: (meshId) => heard.includes(meshId),
+    knownLocations: () => known,
+  };
+  app.csr = {
+    nodes,
+    requestStatus: async (meshId, location) => {
+      app.sent.push([meshId, location]);
+      if (answering.includes(meshId)) app.account.heard(meshId);
+      return true;
+    },
+  };
+  app.homey = fake.fakeHomey(app, { settings: fakeSettings() });
+  return app;
+}
+
+// SgAccount on app with a fetch that gives homes (or throws), and records
+// what it got.
+function withAccount(app, homes = HOMES()) {
+  const fetched = [];
+  const fetch = async (email, password, { log }) => {
+    fetched.push([email, password]);
+    if (homes instanceof Error) throw homes;
+    log(`SG cloud: ${homes.length} home(s), logged out`);
+    return { homes, loggedOut: true };
+  };
+  app.account = new SgAccount(app, { fetch });
+  return fetched;
+}
+
+// The check after a login, to its end: FF04s, then the timer for the answers.
+async function checked(app) {
+  for (let i = 0; i < 20; i += 1) {
+    await tick();
+    if (app.homey.pending.size) app.homey.runAll();
+  }
+}
+
+// A device added here: later CSRmesh (getCsrMeshId) or first generation
+// (getMeshId), with its name and settings.
+function added({ meshId, csr = true, name = 'Made-up device', settings = { passphrase: '1234' }, id = `@SC${meshId}`, location } = {}) {
+  return {
+    getData: () => ({ id }),
+    getName: () => name,
+    getSettings: () => settings,
+    ...(csr ? { getCsrMeshId: () => meshId, getCsrLocationId: () => location } : { getMeshId: () => meshId }),
+  };
+}
+
+const allText = (app) => [...app.logs, ...app.errors, JSON.stringify(app.account.summary())].join('\n');
+
+// ---- what is kept
+
+test('a login keeps per home the passphrase when it is not 1234, the 3.0 keys and the devices with a mesh id; never the e-mail or the password', async () => {
+  const app = accountApp();
+  const fetched = withAccount(app);
+  const summary = await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  assert.deepEqual(fetched, [[EMAIL, PASSWORD]]);
+  assert.equal(summary.fetched, true);
+  assert.deepEqual([...app.homey.settings.values.keys()], [SETTING], 'one setting');
+  const kept = app.homey.settings.values.get(SETTING);
+  assert.deepEqual(kept.homes, [
+    { passphrase: ISOLATED, netKey: NET_KEY, appKey: APP_KEY, locationId: 0x4242, devices: HOMES()[0].devices.slice(0, 5) },
+    { passphrase: null, netKey: NET_KEY, appKey: APP_KEY, locationId: null, devices: HOMES()[1].devices },
+  ]);
+  const stored = JSON.stringify([...app.homey.settings.values]);
+  for (const word of [EMAIL, PASSWORD]) assert.ok(!stored.includes(word), word);
+  assert.ok(app.logs.some((line) => /kept 2 home\(s\): passphrase other than 1234 for 1, 3\.0 keys for 2, 7 device\(s\), 1 without a mesh id left out/.test(line)));
+});
+
+test('a failed login keeps what was there, never the e-mail or the password, and says what kind of error it was', async () => {
+  for (const [err, kind] of [
+    [accountError('SG_CLOUD_LOGIN', 'made-up login refused'), 'login'],
+    [accountError('SG_CLOUD_TIMEOUT', 'made-up timeout'), 'network'],
+    [accountError('SG_CLOUD_NETWORK', 'made-up no connection'), 'network'],
+    [accountError('SG_CLOUD_MISSING', 'made-up no e-mail'), 'missing'],
+    [new TypeError(`made-up failure with ${EMAIL} and ${PASSWORD}`), 'other'],
+  ]) {
+    const app = accountApp();
+    withAccount(app);
+    await app.account.login('first@example.invalid', 'first pass');
+    await checked(app);
+    const before = JSON.stringify([...app.homey.settings.values]);
+    withAccount(app, err);
+    app.account._state = app.homey.settings.get(SETTING);
+    const summary = await app.account.login(EMAIL, PASSWORD);
+    assert.equal(summary.error, kind, err.message);
+    assert.equal(summary.fetched, true, 'what was kept stays');
+    assert.equal(JSON.stringify([...app.homey.settings.values]), before);
+    for (const word of [EMAIL, PASSWORD, 'first@example.invalid', 'first pass']) assert.ok(!allText(app).includes(word), `${kind}: ${word}`);
+  }
+});
+
+test('no key, passphrase, e-mail or password in the log, the errors or the summary for the page', async () => {
+  const app = accountApp({ answering: [0x8003] });
+  withAccount(app);
+  await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  const text = allText(app);
+  for (const word of [EMAIL, PASSWORD, ISOLATED, NET_KEY, APP_KEY]) assert.ok(!text.includes(word), word);
+  assert.equal(app.account.summary().homes[0].passphrase, true, 'only that one was fetched');
+});
+
+// ---- the passphrase
+
+test('resolveKey: a raw key or an own passphrase other than 1234 wins; the fetched one counts while the own is 1234 or empty', () => {
+  const raw = 'ab'.repeat(16);
+  assert.deepEqual(resolveKey({ netkey_hex: raw, passphrase: 'own1' }, ISOLATED), Buffer.from(raw, 'hex'));
+  assert.deepEqual(resolveKey({ passphrase: 'own1' }, ISOLATED), deriveNetworkKey('own1'));
+  assert.deepEqual(resolveKey({ passphrase: ' own1 ' }, ISOLATED), deriveNetworkKey('own1'));
+  for (const settings of [{ passphrase: '1234' }, { passphrase: '' }, { passphrase: ' 1234 ' }, {}]) {
+    assert.deepEqual(resolveKey(settings, ISOLATED), deriveNetworkKey(ISOLATED), JSON.stringify(settings));
+    assert.deepEqual(resolveKey(settings, null), deriveNetworkKey('1234'), JSON.stringify(settings));
+    assert.deepEqual(resolveKey(settings), deriveNetworkKey('1234'), 'as before without the account');
+  }
+});
+
+test('the passphrase for a mesh id: of the one home that has it; none for a mesh id in two homes, at 1234 or not in the account', async () => {
+  const app = accountApp();
+  withAccount(app);
+  await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  assert.equal(app.account.passphraseFor(0x8001), ISOLATED);
+  assert.equal(app.account.passphraseFor(0x8003), null, 'in two homes');
+  assert.equal(app.account.passphraseFor(0x8006), null, 'its home is at 1234');
+  assert.equal(app.account.passphraseFor(0x9999), null);
+  assert.equal(app.account.passphraseFor(null), null);
+  assert.equal(app.account.onlyPassphrase(), ISOLATED);
+  assert.equal(app.account.typeFor(0x8004), 2002);
+  assert.equal(app.account.typeFor(0x8003), null, 'in two homes');
+});
+
+test('each kind of device takes the account\'s passphrase in getNetworkKey, unless it has its own', () => {
+  for (const DeviceClass of [SGCsrDevice, SGMeshDevice, SGThermostatDevice]) {
+    const asked = [];
+    const device = {
+      homey: { app: { accountPassphrase: (d) => { asked.push(d); return ISOLATED; } } },
+      settings: { passphrase: '1234' },
+      getSettings() { return this.settings; },
+    };
+    assert.deepEqual(DeviceClass.prototype.getNetworkKey.call(device), deriveNetworkKey(ISOLATED), DeviceClass.name);
+    assert.deepEqual(asked, [device], 'asked for itself');
+    device.settings = { passphrase: 'own1' };
+    assert.deepEqual(DeviceClass.prototype.getNetworkKey.call(device), deriveNetworkKey('own1'), DeviceClass.name);
+    const without = { homey: { app: {} }, getSettings: () => ({ passphrase: '1234' }) };
+    assert.deepEqual(DeviceClass.prototype.getNetworkKey.call(without), deriveNetworkKey('1234'), `${DeviceClass.name}, no account`);
+  }
+});
+
+// The app with these devices and an SG account on its settings.
+function appWith(devices) {
+  const app = new SGSmartApp();
+  app.homey = fake.fakeHomey(app, {
+    settings: fakeSettings(),
+    drivers: { getDrivers: () => ({ one: { getDevices: () => devices } }) },
+  });
+  withAccount(app);
+  return app;
+}
+
+test('the app: a device\'s passphrase by its mesh id, none for a fake device; with no device the one fetched passphrase, after "Forget" 1234', async () => {
+  const csr = added({ meshId: 0x8004 });
+  const gen1 = added({ meshId: 0x8001, csr: false });
+  const fakeOne = added({ meshId: 0x8004, id: 'fake:@SC8004' });
+  const app = appWith([csr, gen1, fakeOne]);
+  app.csr = { nodes: new Map(), requestStatus: async () => true };
+  await app.account.login(EMAIL, PASSWORD);
+  for (let i = 0; i < 20; i += 1) {
+    await tick();
+    if (app.homey.pending.size) app.homey.runAll();
+  }
+  assert.equal(app.accountPassphrase(csr), ISOLATED);
+  assert.equal(app.accountPassphrase(gen1), ISOLATED);
+  assert.equal(app.accountPassphrase(fakeOne), null);
+  const empty = appWith([]);
+  await empty.account.login(EMAIL, PASSWORD);
+  assert.deepEqual(empty.getNetworkKey(), deriveNetworkKey(ISOLATED));
+  empty.account.forget();
+  assert.deepEqual(empty.getNetworkKey(), deriveNetworkKey('1234'));
+});
+
+// ---- X of Y answer
+
+test('the check: one FF04 to each later CSRmesh device with a location id, none twice and none to a first generation dimmer or 3.0; X of Y, who does not answer, and who is unknown', async () => {
+  const devices = [added({ meshId: 0x8002, csr: false, name: 'Made-up hall' }), added({ meshId: 0x8003, location: 0x4343 })];
+  const app = accountApp({ devices, heard: [0x8001], answering: [0x8003] });
+  withAccount(app);
+  const first = await app.account.login(EMAIL, PASSWORD);
+  assert.equal(first.checking, true);
+  assert.equal((await app.account.login(EMAIL, PASSWORD)).error, 'busy', 'no second fetch while the devices are asked');
+  await checked(app);
+  assert.deepEqual(app.sent, [[0x8003, 0x4343], [0x8004, 0x4242]],
+    'one FF04 each, the Pill once though it is in both homes, with its own location id; the plug with its home\'s; the dimmer of home 2 has none');
+  const summary = app.account.summary();
+  assert.equal(summary.checking, false);
+  assert.deepEqual(summary.homes, [
+    {
+      number: 1, devices: 5, passphrase: true, sg3: 1, checked: true, answering: 2, total: 4,
+      quiet: [{ name: 'Made-up hall' }, { product: 'Smart Plug', type: 2002, address: '8004' }], unknown: [],
+    },
+    {
+      number: 2, devices: 2, passphrase: false, sg3: 0, checked: true, answering: 1, total: 1,
+      quiet: [], unknown: [{ product: 'LEDDim Smart', type: 1, address: '8006' }],
+    },
+  ]);
+  assert.ok(app.logs.includes('[SG account] check: 3 of 5 answer, 2 FF04 sent, 1 unknown (no location id), 1 SG Smart 3.0 not asked'));
+  // The check is kept, and the next login asks again, once each.
+  assert.ok(app.homey.settings.get(SETTING).check);
+  await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  assert.equal(app.sent.length, 4);
+});
+
+test('the FF04\'s location id: the device\'s own, then its FF11\'s, then its home\'s from the account; with none the device is not asked', async () => {
+  const nodes = new Map([[0x8004, { meshId: 0x8004, location: 0x5151 }]]);
+  for (const [home2, sent, unknown] of [
+    [0x7171, [[0x8003, 0x4343], [0x8004, 0x5151], [0x8006, 0x7171]], []],
+    [null, [[0x8003, 0x4343], [0x8004, 0x5151]], [0x8006]],
+  ]) {
+    const app = accountApp({ devices: [added({ meshId: 0x8003, location: 0x4343 })], nodes });
+    const homes = HOMES();
+    homes[1].locationId = home2;
+    withAccount(app, homes);
+    await app.account.login(EMAIL, PASSWORD);
+    await checked(app);
+    assert.deepEqual(app.sent, sent, String(home2));
+    assert.deepEqual(app.homey.settings.get(SETTING).check.unknown, unknown);
+  }
+  // A Pill in two homes with different location ids, and none of its own: unknown.
+  const app = accountApp();
+  const homes = HOMES();
+  homes[1].locationId = 0x7171;
+  withAccount(app, homes);
+  await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  assert.ok(!app.sent.some(([meshId]) => meshId === 0x8003));
+  assert.deepEqual(app.homey.settings.get(SETTING).check.unknown, [0x8003]);
+});
+
+// ---- Forget SG account
+
+test('"Forget SG account" removes all that was kept, a check under way keeps nothing, and the devices fall back to their own passphrase or 1234', async () => {
+  const app = accountApp();
+  withAccount(app);
+  await app.account.login(EMAIL, PASSWORD);
+  const summary = app.account.forget();
+  await checked(app);
+  assert.deepEqual(summary, { available: true, fetched: false, checking: false, homes: [] });
+  assert.deepEqual([...app.homey.settings.values.keys()], []);
+  assert.equal(app.account.passphraseFor(0x8001), null);
+  assert.equal(app.account.onlyPassphrase(), null);
+  assert.ok(app.logs.includes('[SG account] forgotten: the devices use their own passphrase or 1234'));
+  assert.ok(!app.logs.some((line) => line.startsWith('[SG account] check:')), 'the check stopped');
+  // Read again after a restart: nothing.
+  assert.equal(new SgAccount(app).fetched(), false);
+});
+
+// ---- the API and the page
+
+test('api.js hands the e-mail and password on, gives the summary, and an error only by its kind', async () => {
+  const got = [];
+  const account = {
+    login: async (email, password) => { got.push([email, password]); return { fetched: true }; },
+    summary: () => ({ fetched: true }),
+    forget: () => ({ fetched: false }),
+  };
+  const homey = { app: { account } };
+  assert.deepEqual(await api.loginAccount({ homey, body: { email: EMAIL, password: PASSWORD } }), { fetched: true });
+  assert.deepEqual(got, [[EMAIL, PASSWORD]]);
+  assert.deepEqual(await api.getAccount({ homey }), { fetched: true });
+  assert.deepEqual(await api.forgetAccount({ homey }), { fetched: false });
+  const broken = { app: { account: { login: async () => { throw new Error(`failed for ${EMAIL}`); } } } };
+  assert.deepEqual(await api.loginAccount({ homey: broken, body: {} }), { error: 'other' });
+  const manifest = JSON.parse(read('app.json'));
+  assert.deepEqual(manifest.api, {
+    getLogView: { method: 'GET', path: '/log-view' },
+    getAccount: { method: 'GET', path: '/account' },
+    loginAccount: { method: 'POST', path: '/account/login' },
+    forgetAccount: { method: 'POST', path: '/account/forget' },
+  });
+  assert.equal(manifest.version, '2.7.0');
+});
+
+test('the settings page sends the e-mail and password with Homey.api, never Homey.set, empties both fields, and uses every account text', () => {
+  const page = read('settings/index.html');
+  assert.ok(page.includes("api('POST', '/account/login', body)"));
+  assert.ok(page.includes("api('POST', '/account/forget', null)"));
+  assert.ok(page.includes("api('GET', '/account', null)"));
+  assert.doesNotMatch(page, /set\(\s*['"]account|Homey\.set\(\s*['"]account|Homey\.get\(\s*['"]sgAccount/);
+  assert.ok(page.includes("accountEmail.value = '';") && page.includes("accountPassword.value = '';"));
+  assert.match(page, /<input class="homey-form-input" id="account-password" type="password"/);
+  const en = JSON.parse(read('locales/en.json'));
+  const keys = Object.keys(en.settings.account).filter((key) => key !== 'error');
+  for (const key of keys) assert.ok(page.includes(`settings.account.${key}`), `settings.account.${key} is not used`);
+  assert.ok(page.includes('settings.account.error.${summary.error}'));
+  assert.ok(page.includes("'settings.account.error.other'"));
+  const kinds = ['login', 'missing', 'network', 'busy', 'other'];
+  assert.deepEqual(Object.keys(en.settings.account.error).sort(), [...kinds].sort());
+});
+
+test('the texts: the SG password is not stored, the passphrase hint and the store texts name the login, the guide too when no account is fetched', () => {
+  const [en, no] = ['en', 'no'].map((language) => JSON.parse(read(`locales/${language}.json`)));
+  assert.match(en.settings.account.intro, /Your SG password is not stored\./);
+  assert.match(no.settings.account.intro, /SG-passordet ditt lagres ikke\./);
+  const hint = JSON.parse(read('.homeycompose/drivers/settings/network.json')).children.find((s) => s.id === 'passphrase').hint;
+  assert.match(hint.en, /Or log in with your SG account in the app's settings: the app then fetches the password, and uses it while this field is 1234\.$/);
+  assert.match(hint.no, /Eller logg inn med SG-kontoen i appens innstillinger: da henter appen passordet og bruker det så lenge dette feltet er 1234\.$/);
+  assert.match(read('README.txt'), /log in with your SG account in the app's settings: the app then fetches the password and the list of devices and keeps only those, not your SG password\./);
+  assert.match(read('README.no.txt'), /logge inn med SG-kontoen i appens innstillinger: da henter appen passordet og lista over enheter og lagrer bare dem, ikke SG-passordet ditt\./);
+  assert.match(en.pair.guide.passwordAccount, /log in with your SG account in the app's settings\.$/);
+  const guides = ['sg_mesh', 'sg_pill', 'sg_plug', 'sg_thermostat'].map((driver) => read(`drivers/${driver}/pair/guide.html`));
+  for (const guide of guides) assert.equal(guide, guides[0], 'one guide for all four');
+  assert.ok(guides[0].includes("Homey.emit('account')") && guides[0].includes("Homey.__('pair.guide.passwordAccount')"));
+  const changelogs = JSON.parse(read('.homeychangelog.json'));
+  assert.equal(changelogs['2.7.0'].en, `${changelogs['2.6.2'].en} New: log in with your SG account in the app settings to fetch `
+    + 'your network password and device list. Your password is not stored.');
+  assert.equal(changelogs['2.7.0'].no, `${changelogs['2.6.2'].no} Nytt: logg inn med SG-kontoen i appens innstillinger for å hente `
+    + 'nettverkspassordet og enhetslista. Passordet ditt lagres ikke.');
+});
+
+// ---- the type in the account
+
+test('the type in the account: 101 is the first generation, 3000 to 3999 SG Smart 3.0, every other known one a product of ours', () => {
+  assert.equal(familyForType(FIRST_GENERATION_TYPE), 'gen1');
+  assert.equal(driverForType(FIRST_GENERATION_TYPE), 'sg_mesh');
+  for (const type of [3000, 3005, 3999]) assert.equal(familyForType(type), 'sg3');
+  assert.equal(driverForType(3005), null);
+  for (const [type, prefix] of Object.entries(TYPE_PREFIXES)) {
+    assert.ok(CSR_PRODUCTS[prefix], `${type}: ${prefix}`);
+    assert.equal(familyForType(Number(type)), 'csr');
+  }
+  assert.equal(csrProductForType(1004).name, 'LEDDim Smart Pill');
+  assert.deepEqual([1004, 2002, 1021, 2080, 6, 999].map(driverForType), ['sg_pill', 'sg_plug', 'sg_thermostat', 'sg_mesh', null, null]);
+  assert.equal(csrProductForType(999), null);
+});
+
+// ---- pairing
+
+// A driver as lib/csrPairing.js needs it, with the app's account.
+function pairDriver(app) {
+  const driver = {
+    logs: [],
+    errors: [],
+    homey: { app, __: (key, tokens) => `${key}${tokens ? ` ${JSON.stringify(tokens)}` : ''}`, ...fake.fakeTimers() },
+  };
+  driver.log = (...args) => driver.logs.push(args.join(' '));
+  driver.error = (...args) => driver.errors.push(args.join(' '));
+  return driver;
+}
+
+async function loggedIn(options) {
+  const app = accountApp(options);
+  withAccount(app);
+  await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  return app;
+}
+
+test('pairing: the name\'s prefix decides; a type that disagrees is logged; the type decides only when the prefix is not known here', async () => {
+  const app = await loggedIn();
+  const driver = pairDriver(app);
+  const nodes = [
+    { meshId: 0x8004, name: '@SC0001', product: CSR_PRODUCTS['@SC'] && { prefix: '@SC', ...CSR_PRODUCTS['@SC'] } },
+    { meshId: 0x8006, name: '@ZZ0002', product: null },
+    { meshId: 0x9999, name: '@ZZ0003', product: null },
+  ];
+  const found = accountFindings(driver, [], nodes);
+  assert.deepEqual(found.map((f) => [f.name, f.product.prefix, !!f.byType]), [['@SC0001', '@SC', false], ['@ZZ0002', '@MD', true]]);
+  assert.deepEqual(driver.logs, ['pair: 0x8004 @SC is LEDDim Smart Pill Gen3 by its name, type 2002 (Smart Plug Gen4) in the SG account; the name decides']);
+  assert.deepEqual(withStates(found, 'sg_pill', new Set()).map((f) => [f.name, f.driver]), [['@SC0001', 'sg_pill'], ['@ZZ0002', 'sg_mesh']]);
+  // Without an account, as before.
+  assert.deepEqual(laterFindings([], nodes).map((f) => f.name), ['@SC0001']);
+  assert.deepEqual(typeDisagreements(nodes, () => null), []);
+});
+
+test('pairing: the account\'s devices for a driver that did not answer are named, not offered; heard, added and recalled ones are not', async () => {
+  const app = await loggedIn({ devices: [added({ meshId: 0x8003 })], nodes: new Map([[0x8006, { meshId: 0x8006 }]]) });
+  app.account._state.homes[0].devices.push({ meshId: 0x8007, type: 1002 }, { meshId: 0x8008, type: 2004 });
+  const driver = pairDriver(app);
+  assert.deepEqual(quietInAccount(driver, 'sg_pill'), ['pair.account.device {"product":"LEDDim Smart Pill","address":"8008"}']);
+  assert.deepEqual(quietInAccount(driver, 'sg_plug'), ['pair.account.device {"product":"Smart Plug","address":"8004"}'], 'the recalled plug is left out');
+  assert.deepEqual(quietInAccount(driver, 'sg_mesh', [0x8001]), ['pair.account.device {"product":"LEDDim Smart","address":"8002"}'],
+    'the first generation dimmer the scan saw, and the rotary dimmer that answered, are not named');
+  assert.deepEqual(quietInAccount(pairDriver(accountApp()), 'sg_pill'), [], 'no account, none');
+});
+
+test('pairing: with nothing to add, the list says which of the account\'s devices did not answer; with devices to add, only the log does', async () => {
+  const app = await loggedIn();
+  for (const [listed, expected] of [
+    [{ devices: [], why: 'none found' }, 'pair.account.quiet {"devices":"A, B"}'],
+    [{ error: 'none', text: 'No Pill found.' }, 'No Pill found. pair.account.quiet {"devices":"A, B"}'],
+  ]) {
+    const driver = pairDriver(app);
+    const session = { handlers: {}, setHandler(name, fn) { this.handlers[name] = fn; }, showView: async () => {} };
+    pairInLoadingView(driver, session, { search: async () => ({ quiet: ['A', 'B'] }), list: () => listed });
+    await assert.rejects(session.handlers.list_devices(), (err) => err.message === expected);
+    assert.ok(driver.logs.includes('pair: 2 device(s) in the SG account did not answer'));
+  }
+  const driver = pairDriver(app);
+  const session = { handlers: {}, setHandler(name, fn) { this.handlers[name] = fn; }, showView: async () => {} };
+  pairInLoadingView(driver, session, { search: async () => ({ quiet: ['A'] }), list: () => ({ devices: [{ data: { id: '@SC0001' } }] }) });
+  assert.deepEqual((await session.handlers.list_devices()).map((d) => d.data.id), ['@SC0001']);
+  assert.deepEqual(await session.handlers.account(), { fetched: true });
+  assert.deepEqual(await (() => {
+    const other = { handlers: {}, setHandler(name, fn) { this.handlers[name] = fn; }, showView: async () => {} };
+    pairInLoadingView(pairDriver(accountApp()), other, { search: async () => ({}), list: () => ({ devices: [] }) });
+    return other.handlers.account();
+  })(), { fetched: false });
+});
+
+test('the account\'s values are never in util.inspect of an error from it', async () => {
+  const app = accountApp();
+  withAccount(app, accountError('SG_CLOUD_LOGIN', 'made-up login refused'));
+  await app.account.login(EMAIL, PASSWORD);
+  const text = [...app.errors, util.inspect(app.account.summary())].join('\n');
+  assert.ok(!text.includes(EMAIL) && !text.includes(PASSWORD));
+  assert.deepEqual(app.errors, ['[SG account] made-up login refused']);
+});
+
+// ---- without the account module (a clone of the public repository)
+
+// What load throws when lib/sky/ is not there.
+const missingModule = () => {
+  throw Object.assign(new Error("Cannot find module './sky'\nRequire stack:\n- lib/account.js"), { code: 'MODULE_NOT_FOUND' });
+};
+
+test('without lib/sky/ the account is not available: no login, no fetch, nothing kept, and the rest as without an account', async () => {
+  const app = accountApp();
+  app.account = new SgAccount(app, { load: missingModule });
+  assert.equal(app.account.available(), false);
+  assert.deepEqual(app.account.summary(), { available: false, fetched: false, checking: false, homes: [] });
+  const summary = await app.account.login(EMAIL, PASSWORD);
+  assert.equal(summary.error, 'unavailable');
+  assert.deepEqual([...app.homey.settings.values.keys()], []);
+  assert.deepEqual(app.sent, []);
+  assert.equal(app.account.passphraseFor(0x8001), null);
+  assert.ok(app.logs.includes('[SG account] the account module not in this build: no SG account in this build'));
+  assert.ok(!allText(app).includes(EMAIL) && !allText(app).includes(PASSWORD));
+});
+
+test('a module that does not load, or has another interface version, counts as missing, and the app still starts', () => {
+  const broken = () => { throw new TypeError('made-up failure inside the module'); };
+  const missingInside = () => {
+    throw Object.assign(new Error("Cannot find module './request'"), { code: 'MODULE_NOT_FOUND' });
+  };
+  for (const [load, why] of [
+    [broken, 'did not load (TypeError)'],
+    [missingInside, 'did not load (Error)'],
+    [() => ({ interfaceVersion: 99, fetchHomes: async () => ({}) }), 'has interface 99 where 1 is needed'],
+    [() => ({ interfaceVersion: INTERFACE_VERSION }), 'has no fetchHomes'],
+    [() => null, 'has interface null where 1 is needed'],
+  ]) {
+    const found = loadAccountModule(load);
+    assert.equal(found.fetch, null, why);
+    assert.equal(found.why, why);
+  }
+  const fetchHomes = async () => ({ homes: [], loggedOut: true });
+  assert.equal(loadAccountModule(() => ({ interfaceVersion: INTERFACE_VERSION, fetchHomes })).fetch, fetchHomes);
+  // The app starts with no module: it is only noted in the log.
+  const app = appWith([]);
+  app.account = new SgAccount(app, { load: missingModule });
+  assert.deepEqual(app.getNetworkKey(), deriveNetworkKey('1234'));
+});
+
+test('what was kept before stays usable without the module, and "Forget SG account" still removes it', async () => {
+  const app = accountApp();
+  withAccount(app);
+  await app.account.login(EMAIL, PASSWORD);
+  await checked(app);
+  const later = new SgAccount(app, { load: missingModule });
+  assert.equal(later.passphraseFor(0x8001), ISOLATED);
+  assert.equal(later.summary().available, false);
+  assert.equal(later.summary().fetched, true);
+  later.forget();
+  assert.deepEqual([...app.homey.settings.values.keys()], []);
+});
+
+test('the page says when the account module is not in this build, and hides the login', () => {
+  const page = read('settings/index.html');
+  assert.ok(page.includes('<p id="account-unavailable" hidden data-i18n="settings.account.unavailable">'));
+  assert.ok(page.includes("document.getElementById('account-login').hidden = !available;"));
+  const [en, no] = ['en', 'no'].map((language) => JSON.parse(read(`locales/${language}.json`)));
+  assert.equal(en.settings.account.unavailable, 'Logging in with an SG account is not part of this build.');
+  assert.equal(no.settings.account.unavailable, 'Innlogging med SG-konto er ikke med i dette bygget.');
+});
+
+test('lib/sky/ is not in git, its code goes in a build, its tests and README do not; the store texts say it is not open', () => {
+  assert.match(read('.gitignore'), /^lib\/sky\/$/m);
+  const homeyignore = read('.homeyignore').split('\n');
+  assert.ok(!homeyignore.some((line) => /^\/?lib\/sky\/?$/.test(line.trim())), 'the module is not left out of a build');
+  assert.ok(homeyignore.includes('lib/sky/test/') && homeyignore.includes('lib/sky/README.md'));
+  assert.match(read('README.txt'), /Open source, except the module that logs in to the SG account\.$/m);
+  assert.match(read('README.no.txt'), /Kildekoden er åpen, bortsett fra modulen som logger inn på SG-kontoen\.$/m);
+});

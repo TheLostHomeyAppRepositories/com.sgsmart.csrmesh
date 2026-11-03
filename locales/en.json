@@ -32,11 +32,47 @@
       "closeApp": "Close the SG app on phones and tablets.",
       "near": "Keep Homey close to a dimmer or device.",
       "password": "The password is 1234 unless you changed it in the SG app.",
+      "passwordAccount": "The password is 1234 unless you changed it in the SG app. If you did, log in with your SG account in the app's settings.",
       "duration": "The search takes 10 to 20 seconds.",
       "durationPill": "The search usually takes less than a minute."
+    },
+    "account": {
+      "quiet": "In your SG account, but did not answer: __devices__. Try again closer to them.",
+      "device": "__product__ (address __address__)"
     }
   },
   "settings": {
+    "account": {
+      "title": "SG account",
+      "intro": "Log in with your SG account to fetch the network password and the list of devices for your homes. Your SG password is not stored. The app keeps only the network password, the keys and the list.",
+      "unavailable": "Logging in with an SG account is not part of this build.",
+      "email": "E-mail",
+      "password": "Password",
+      "fetch": "Log in and fetch",
+      "refetch": "Fetch again",
+      "fetching": "Logging in and fetching.",
+      "asking": "Asking the devices.",
+      "fetchedAt": "Fetched __when__.",
+      "home": "Home __number__, devices: __devices__.",
+      "passwordFetched": "Network password fetched.",
+      "passwordDefault": "Network password 1234.",
+      "answering": "__answering__ of __total__ answer.",
+      "quiet": "Not answering: __devices__.",
+      "unknown": "Unknown: __devices__.",
+      "sg3": "SG Smart 3.0: __count__, kept, not asked.",
+      "device": "__product__ (address __address__)",
+      "type": "type __type__",
+      "forget": "Forget SG account",
+      "forgetConfirm": "Remove everything fetched from the SG account? The devices then use their own password or 1234.",
+      "forgotten": "Forgotten. The devices use their own password or 1234.",
+      "error": {
+        "login": "SG did not accept the e-mail or the password.",
+        "missing": "Enter the e-mail and the password.",
+        "network": "Could not reach SG. Try again.",
+        "busy": "Already fetching or asking the devices. Wait a moment.",
+        "other": "Something went wrong. Try again."
+      }
+    },
     "connection": {
       "title": "Connection"
     },

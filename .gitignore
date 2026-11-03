@@ -5,3 +5,5 @@ env.json
 *.tgz
 # hele docs/ holdes utenfor git
 docs/
+# the SG account module: its own private repository (sg-leddim-account)
+lib/sky/

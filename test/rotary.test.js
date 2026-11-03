@@ -228,7 +228,7 @@ test('sg_mesh pairs as sg_pill does: the guide, Homey\'s loading view, which mov
   const { app, driver } = meshDriver([adv('a', '@ND1A2B')]);
   const session = pairSession();
   await driver.onPair(session);
-  assert.deepEqual(Object.keys(session.handlers).sort(), ['disconnect', 'list_devices', 'showView']);
+  assert.deepEqual(Object.keys(session.handlers).sort(), ['account', 'disconnect', 'list_devices', 'showView'], 'account: the guide asks whether an SG account is fetched');
   await session.handlers.showView('guide');
   await session.handlers.showView('loading');
   assert.deepEqual(session.views, ['list_devices'], 'the list by name, not nextView');

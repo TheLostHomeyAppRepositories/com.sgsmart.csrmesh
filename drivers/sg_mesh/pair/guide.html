@@ -50,6 +50,15 @@
       document.querySelector('[data-step="duration"]').textContent = Homey.__(`pair.guide.${options.duration}`);
     }
   }).catch(() => {});
+  // Without an SG account fetched in the app's settings, the password step
+  // also says that logging in there brings the password (lib/csrPairing.js,
+  // the account handler; Athom: advanced/custom-views/custom-pairing-views.md,
+  // Homey.emit).
+  Homey.emit('account').then((account) => {
+    if (account && account.fetched === false) {
+      document.querySelector('[data-step="password"]').textContent = Homey.__('pair.guide.passwordAccount');
+    }
+  }).catch(() => {});
   // The picture is assets/guide/guide.png in this driver; without it, its room
   // goes. The drivers that search share this view and its texts (pair.guide);
   // each has its own picture.

@@ -7,6 +7,7 @@ const { learnLocation } = require('./lib/location');
 const { FileLog, maskLog } = require('./lib/FileLog');
 const { CsrNetwork } = require('./lib/CsrNetwork');
 const { isFakeDevice, loadFakes } = require('./lib/fakeDevices');
+const { SgAccount } = require('./lib/account');
 
 // App settings and their defaults. keepConnected ("Keep dimmers connected")
 // has no stored default: unset, it follows the number of dimmers; see
@@ -47,7 +48,13 @@ class SGSmartApp extends Homey.App {
     this.bridge.startStatus((idHex, level, location) => this._dispatchStatus(idHex, level, location));
     // SG's later CSRmesh products (lib/SGCsrDevice.js, a trial in 2.5.0).
     this.csr = new CsrNetwork(this);
-    this.bridge.onFrame((frame) => this.csr.handleFrame(frame));
+    // The SG account in the app's settings (lib/account.js, 2.7.0): it
+    // only notes who was heard, for "X of Y answer".
+    this.account = new SgAccount(this);
+    this.bridge.onFrame((frame) => {
+      this.account.heard(frame.src);
+      this.csr.handleFrame(frame);
+    });
     this.csr.start();
     // Only in a run with `homey app run` (lib/fakeDevices.js); otherwise null.
     // An error there never stops the start: it is logged.
@@ -77,6 +84,7 @@ class SGSmartApp extends Homey.App {
   // survives an app restart and is only cleared by rebooting Homey. Release it.
   async onUninit() {
     if (this._notHeardTimer) this.homey.clearInterval(this._notHeardTimer);
+    if (this.account) this.account.stop();
     if (this.csr) this.csr.stop();
     if (this.fakes) this.fakes.stop();
     if (this.bridge) {
@@ -291,6 +299,15 @@ class SGSmartApp extends Homey.App {
     }
   }
 
+  // A first generation dimmer's status was heard within the time a dimmer
+  // may go unheard before its warning (_checkNotHeard), for "X of Y answer"
+  // (lib/account.js). Nothing is sent for it.
+  recentlyHeard(meshId) {
+    const at = this._heardAt ? this._heardAt.get(meshId) : undefined;
+    const limit = this.bridge && this.bridge._held ? NOT_HEARD_HELD_MS : NOT_HEARD_POLL_MS;
+    return Number.isFinite(at) && Date.now() - at < limit;
+  }
+
   _checkNotHeard() {
     // The dimmers already say why: no status can be read at all.
     if (this._statusUnreadable) return;
@@ -352,7 +369,9 @@ class SGSmartApp extends Homey.App {
   }
 
   // All devices on one CSRmesh network share the same key, so inbound status
-  // frames are decrypted with the key of any paired device.
+  // frames are decrypted with the key of any paired device. With none paired
+  // yet, the one passphrase the SG account has fetched, if it has exactly one
+  // other than 1234, else 1234.
   getNetworkKey() {
     for (const device of this._devices()) {
       if (typeof device.getNetworkKey === 'function') {
@@ -363,7 +382,18 @@ class SGSmartApp extends Homey.App {
         }
       }
     }
-    return deriveNetworkKey(DEFAULT_PASSPHRASE);
+    return deriveNetworkKey((this.account && this.account.onlyPassphrase()) || DEFAULT_PASSPHRASE);
+  }
+
+  // The home's passphrase from the SG account for a device's mesh id, or
+  // null: for a fake device, or when the account has none for it
+  // (lib/account.js). Used by each device's getNetworkKey.
+  accountPassphrase(device) {
+    if (!this.account || isFakeDevice(device)) return null;
+    let meshId = null;
+    if (typeof device.getCsrMeshId === 'function') meshId = device.getCsrMeshId();
+    else if (typeof device.getMeshId === 'function') meshId = device.getMeshId();
+    return this.account.passphraseFor(meshId);
   }
 
   nextSeq() {

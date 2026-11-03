@@ -3,7 +3,7 @@
 const Homey = require('homey');
 const { NODE_NAME, meshIdFromName } = require('../../lib/csrmesh');
 const {
-  foundNote, laterDevice, laterFindings, laterNodes, pairInLoadingView, withStates,
+  accountFindings, foundNote, laterDevice, laterFindings, laterNodes, pairInLoadingView, quietInAccount, withStates,
 } = require('../../lib/csrPairing');
 const { csrDriverFor, csrProductForName } = require('../../lib/sgProducts');
 const { isFakeId } = require('../../lib/fakeDevices');
@@ -200,10 +200,14 @@ class SGMeshDriver extends Homey.Driver {
     // No rotary dimmer at all: what was found instead (lib/csrPairing.js).
     const note = candidates.length ? '' : foundNote(later, (key, tokens) => this.homey.__(key, tokens), 'sg_mesh');
     const dimmers = candidates.length + later.filter((f) => f.state === 'add' || f.state === 'added').length;
+    // The SG account's rotary dimmers that did not answer: a first generation
+    // one counts as heard when the scan saw its @ND name.
+    const quiet = quietInAccount(this, 'sg_mesh', candidates.map(([localName]) => meshIdFromName(localName)));
 
-    if (!dimmers) return { devices, reason: 'none', note };
-    if (devices.every((device) => addedIds.has(device.data.id))) return { devices, reason: 'allAdded', note };
-    return { devices, reason: null, note };
+    const extra = quiet.length ? { quiet } : {};
+    if (!dimmers) return { devices, reason: 'none', note, ...extra };
+    if (devices.every((device) => addedIds.has(device.data.id))) return { devices, reason: 'allAdded', note, ...extra };
+    return { devices, reason: null, note, ...extra };
   }
 
   // The SG products after the first generation that the scan and the FF11
@@ -213,7 +217,7 @@ class SGMeshDriver extends Homey.Driver {
   // first generation dimmers are listed all the same.
   async _later(advertisements, addedIds) {
     const { nodes } = await laterNodes(this);
-    const found = withStates(laterFindings(advertisements, nodes), 'sg_mesh', addedIds);
+    const found = withStates(accountFindings(this, advertisements, nodes), 'sg_mesh', addedIds);
     const states = found.map((f) => `${f.product.prefix} ${f.product.generation} ${f.product.kind} ${f.state}`);
     this.log(`pair: ${nodes.length} FF11 answer(s), ${found.length} SG device(s) after Gen1: ${states.join('; ')}`);
     return found;

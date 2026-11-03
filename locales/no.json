@@ -32,11 +32,47 @@
       "closeApp": "Lukk SG-appen på telefon og nettbrett.",
       "near": "Ha Homey nær en dimmer eller enhet.",
       "password": "Passordet er 1234 om du ikke har endret det i SG-appen.",
+      "passwordAccount": "Passordet er 1234 om du ikke har endret det i SG-appen. Har du det, logg inn med SG-kontoen i appens innstillinger.",
       "duration": "Søket tar 10 til 20 sekunder.",
       "durationPill": "Søket tar vanligvis under ett minutt."
+    },
+    "account": {
+      "quiet": "I SG-kontoen din, men svarte ikke: __devices__. Prøv igjen nærmere dem.",
+      "device": "__product__ (adresse __address__)"
     }
   },
   "settings": {
+    "account": {
+      "title": "SG-konto",
+      "intro": "Logg inn med SG-kontoen din for å hente nettverkspassordet og lista over enheter for hjemmene dine. SG-passordet ditt lagres ikke. Appen lagrer bare nettverkspassordet, nøklene og lista.",
+      "unavailable": "Innlogging med SG-konto er ikke med i dette bygget.",
+      "email": "E-post",
+      "password": "Passord",
+      "fetch": "Logg inn og hent",
+      "refetch": "Hent på nytt",
+      "fetching": "Logger inn og henter.",
+      "asking": "Spør enhetene.",
+      "fetchedAt": "Hentet __when__.",
+      "home": "Hjem __number__, enheter: __devices__.",
+      "passwordFetched": "Nettverkspassordet er hentet.",
+      "passwordDefault": "Nettverkspassordet er 1234.",
+      "answering": "__answering__ av __total__ svarer.",
+      "quiet": "Svarer ikke: __devices__.",
+      "unknown": "Ukjent: __devices__.",
+      "sg3": "SG Smart 3.0: __count__, lagret, ikke spurt.",
+      "device": "__product__ (adresse __address__)",
+      "type": "type __type__",
+      "forget": "Glem SG-kontoen",
+      "forgetConfirm": "Fjerne alt som er hentet fra SG-kontoen? Enhetene bruker da sitt eget passord eller 1234.",
+      "forgotten": "Glemt. Enhetene bruker sitt eget passord eller 1234.",
+      "error": {
+        "login": "SG godtok ikke e-posten eller passordet.",
+        "missing": "Skriv inn e-post og passord.",
+        "network": "Fikk ikke kontakt med SG. Prøv igjen.",
+        "busy": "Henter eller spør enhetene allerede. Vent litt.",
+        "other": "Noe gikk galt. Prøv igjen."
+      }
+    },
     "connection": {
       "title": "Tilkobling"
     },

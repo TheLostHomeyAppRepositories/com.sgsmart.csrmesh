@@ -5,5 +5,7 @@ progress/
 CLAUDE.md
 test/
 lib/fake/
+lib/sky/test/
+lib/sky/README.md
 dev/
 *.code-workspace

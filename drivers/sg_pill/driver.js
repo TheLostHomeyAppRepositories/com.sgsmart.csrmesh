@@ -2,7 +2,7 @@
 
 const Homey = require('homey');
 const {
-  foundNote, laterDevice, laterFindings, laterNodes, pairInLoadingView, sgNodesLine, withStates,
+  accountFindings, foundNote, laterDevice, laterNodes, pairInLoadingView, quietInAccount, sgNodesLine, withStates,
 } = require('../../lib/csrPairing');
 
 // The Pill family of SG's CSRmesh products after the first generation
@@ -55,13 +55,14 @@ class SGPillDriver extends Homey.Driver {
     this.log(sgNodesLine(advertisements));
     const { nodes, out } = await laterNodes(this);
     const added = new Set(this.getDevices().map((device) => String((device.getData() || {}).id || '')));
-    const found = withStates(laterFindings(advertisements, nodes), 'sg_pill', added);
+    const found = withStates(accountFindings(this, advertisements, nodes), 'sg_pill', added);
     const devices = found.filter((f) => f.state === 'add').map((f) => laterDevice(f, { icons: true }));
     // Counts and prefixes only: no addresses or names in the log.
     const states = found.map((f) => `${f.product.prefix} ${f.product.generation} ${f.product.kind} ${f.state}`);
     this.log(`pair: scan ${seconds.toFixed(1)} s, ${advertisements.length} advertisement(s), ${nodes.length} FF11 answer(s), `
       + `${found.length} SG device(s) after Gen1${states.length ? `: ${states.join('; ')}` : ''}`);
-    return { devices, found, out };
+    const quiet = quietInAccount(this, 'sg_pill');
+    return { devices, found, out, ...(quiet.length ? { quiet } : {}) };
   }
 }
 
