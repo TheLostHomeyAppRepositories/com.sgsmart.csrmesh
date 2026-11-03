@@ -73,6 +73,11 @@ test('FF05 and FF50: the level counts only when on and 1..100', () => {
   assert.equal(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1])), null);
   assert.deepEqual(proto.parseCsrFastStatus(Buffer.from([0x5a, 0x3c, 1, 55, 7, 0, 0x21, 0])),
     { location: LOC, on: true, level: 55, tid: 7, white: 0x21 });
+  // FF50: six bytes at least, and the white value only with eight.
+  assert.equal(proto.parseCsrFastStatus(Buffer.from([0x5a, 0x3c, 1, 55, 7])), null);
+  assert.deepEqual(proto.parseCsrFastStatus(Buffer.from([0x5a, 0x3c, 1, 55, 7, 0])),
+    { location: LOC, on: true, level: 55, tid: 7, white: null });
+  assert.equal(proto.parseCsrFastStatus(Buffer.from([0x5a, 0x3c, 1, 55, 7, 0, 0x21])).white, null);
   assert.deepEqual(proto.parseExt(ext(0x8000, 0xff05, [1, 2])), { dst: 0x8000, opcode: 0xff05, data: Buffer.from([1, 2]) });
   assert.equal(proto.parseExt(Buffer.from([0x01, 0x80, 0x73, 0xf7, 0, 0])), null);
 });
@@ -812,18 +817,20 @@ test('tid: 10.5 s after the last command it goes on, 11 s after it is 1 again (w
   assert.deepEqual(app.sent.map((s) => s.plain.readUInt16LE(8)), [1, 2, 3, 4, 1, 2]);
 });
 
-test('tunable white: FF03 carries the last white value reported; other products send 0', async () => {
+test('white: FF03 carries 0 for every product, also a tunable white one that reported its white value, on and off too', async () => {
   const app = deviceApp();
   const tw = await csrDevice(app, { locationId: LOC, tunableWhite: true });
   tw.applyCsrStatus(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1, 40, 7, 1, 2, 0x33, 0x80])), 'FF05');
+  assert.ok(tw.logs.includes('status FF05 applied: on=true level=40 white=51'), 'only logged');
   tw._request(60);
+  tw._request(tw._levelFor({ onoff: true }));
+  tw._request(0);
   await tick();
-  assert.equal(app.sent[0].plain.toString('hex').slice(-2), '33');
   const plain = await csrDevice(app, { locationId: LOC });
   plain.applyCsrStatus(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1, 40, 7, 1, 2, 0x33, 0x80])), 'FF05');
   plain._request(60);
   await tick();
-  assert.equal(app.sent[1].plain.toString('hex').slice(-2), '00');
+  assert.deepEqual(app.sent.map((s) => s.plain.toString('hex').slice(-2)), ['00', '00', '00', '00']);
 });
 
 test('without a location id: the level waits, names are asked for, and FF11 brings the location id and sends it', async () => {
@@ -860,9 +867,34 @@ test('without its own location id it uses the one the first generation dimmers s
   assert.ok(lonely.logs.some((line) => line.includes('kept level 20 dropped')));
 });
 
-test('status: FF05 and FF50 set onoff and dim; a repeated or older number soon after (Gen3) and another home are ignored', async () => {
+test('status: FF05 and FF50 set onoff and dim, but not within 8 s of a command from here; a repeated or older number soon after (Gen3) and another home are ignored', async () => {
   const app = deviceApp();
   const device = await csrDevice(app, { locationId: LOC });
+  const realNow = Date.now;
+  let t = 5000000;
+  Date.now = () => t;
+  try {
+    device._request(30);
+    await tick();
+    t += 7999;
+    assert.equal(device.applyCsrStatus(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1, 90, 1])), 'FF05'), false);
+    assert.equal(device.applyCsrStatus(proto.parseCsrFastStatus(Buffer.from([0x5a, 0x3c, 1, 90, 1, 0])), 'FF50'), false);
+    await tick();
+    assert.equal(device.getCapabilityValue('dim'), undefined);
+    assert.ok(device.logs.includes('status FF05 not taken: within 8 s of a command from here'));
+    assert.ok(device.logs.includes('status FF50 not taken: within 8 s of a command from here'));
+    t += 1;
+    assert.equal(device.applyCsrStatus(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1, 30, 2])), 'FF05'), true);
+    await tick();
+    assert.equal(device.getCapabilityValue('dim'), 0.3);
+    // A device without dimming takes its status at once.
+    const onOff = await csrDevice(app, { locationId: LOC, prefix: '@SE' }, { dim: false });
+    onOff._request(100);
+    await tick();
+    assert.equal(onOff.applyCsrStatus(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1, 0, 1])), 'FF05'), true);
+  } finally {
+    Date.now = realNow;
+  }
   device.applyCsrStatus(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1, 40, 7])), 'FF05');
   await tick();
   assert.equal(device.getCapabilityValue('onoff'), true);
@@ -895,7 +927,7 @@ test('the number in FF05: Gen3 and Gen4 only, up to 8 whole seconds after the la
     t += ms;
     const bytes = id === null ? [0x5a, 0x3c, 1, level] : [0x5a, 0x3c, 1, level, id];
     device.applyCsrStatus(proto.parseCsrStatus(Buffer.from(bytes)), 'FF05');
-    levels.push(Math.round(device._lastDim * 100));
+    levels.push(Math.round(device.getCapabilityValue('dim') * 100));
   };
   try {
     ff05(gen3, 7, 40, 0); // taken
@@ -934,6 +966,48 @@ test('an ON-OFF Pill: on is pwr 01 with level 00, off is 00 00', async () => {
   // A dimmable device as before: the power byte follows the level.
   assert.equal(proto.csrLevelData({ meshId: MESH_ID, location: LOC, level: 40, tid: 1 }).toString('hex').slice(12, 16), '0128');
   assert.equal(proto.csrLevelData({ meshId: MESH_ID, location: LOC, level: 0, on: true, tid: 1 }).toString('hex').slice(12, 16), '0100');
+});
+
+test('a dimmer turned on without a level: pwr 01 with level 00, whatever level Homey shows; with a level, that level', async () => {
+  const app = deviceApp();
+  const device = await csrDevice(app, { locationId: LOC });
+  await device.setCapabilityValue('dim', 0.7);
+  for (const values of [{ onoff: true }, { onoff: true, dim: 0.4 }, { dim: 0.55 }, { onoff: false }]) {
+    device._request(device._levelFor(values));
+  }
+  await tick();
+  assert.deepEqual(app.sent.map((s) => s.plain.toString('hex').slice(12, 16)), ['0100', '0128', '0137', '0000']);
+  assert.ok(device.logs.some((line) => /^command FF03 id=0x0123 on level=0 /.test(line)));
+});
+
+test('after a command to a dimmer: one FF04 9 s after the last one, which ends the quiet time; none for a device without dimming', async () => {
+  const app = deviceApp();
+  const device = await csrDevice(app, { locationId: LOC });
+  const readBacks = (d) => [...d.homey.pending.values()].filter((timer) => timer.ms === 9000).length;
+  const realNow = Date.now;
+  let t = 5000000;
+  Date.now = () => t;
+  try {
+    device._request(40);
+    await tick();
+    t += 3000;
+    device._request(60);
+    await tick();
+    assert.equal(readBacks(device), 1, 'counted from the last command');
+    t += 5000;
+    assert.equal(device.applyCsrStatus(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1, 40, 1])), 'FF05'), false);
+    device.homey.runMs(9000);
+    await tick();
+    assert.deepEqual(app.csr.statuses, [[MESH_ID, LOC]]);
+    assert.equal(device.applyCsrStatus(proto.parseCsrStatus(Buffer.from([0x5a, 0x3c, 1, 60, 2])), 'FF05'), true);
+  } finally {
+    Date.now = realNow;
+  }
+  const onOff = await csrDevice(app, { locationId: LOC, prefix: '@SE' }, { dim: false });
+  onOff._request(100);
+  await tick();
+  assert.equal(readBacks(onOff), 0);
+  assert.deepEqual(app.csr.statuses, [[MESH_ID, LOC]]);
 });
 
 test('status is asked for after start and then every 10 minutes; without a location id, names instead', async () => {

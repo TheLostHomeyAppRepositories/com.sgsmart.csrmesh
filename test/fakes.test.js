@@ -214,6 +214,10 @@ async function runTimers(homey, ...times) {
   }
 }
 
+// The status a fake dimmer sends 2 s after a command is not taken (the quiet
+// time in lib/SGCsrDevice.js); the read-back 9 s after it is, 2 s later.
+const READ_BACK = [9000, 2000];
+
 // A pairing of driver as Homey runs it, with what the real search gives
 // (nothing found, unless real or search says otherwise): the list it gives.
 async function pair(run, driverId, { real = { devices: [], found: [], out: true }, search } = {}) {
@@ -273,12 +277,15 @@ test('a fake device answers a command after 2 s, through the same reading as a r
   await runTimers(run.app.homey, 0);
   assert.notEqual(device.getCapabilityValue('dim'), 0.4, 'not before 2 s');
   await runTimers(run.app.homey, 2000);
+  assert.ok(run.app.logs.some((line) => /^\[FAKE\] \[CSR\] EXT src=0x7f01 dst=0x8000 op=FF05 len=7 data=7f000128/.test(line)));
+  assert.notEqual(device.getCapabilityValue('dim'), 0.4, 'the answer to the command is in the quiet time');
+  assert.ok(device.logs.includes('status FF05 not taken: within 8 s of a command from here'));
+  await runTimers(run.app.homey, ...READ_BACK);
   assert.equal(device.getCapabilityValue('onoff'), true);
   assert.equal(device.getCapabilityValue('dim'), 0.4);
-  assert.ok(run.app.logs.some((line) => /^\[FAKE\] \[CSR\] EXT src=0x7f01 dst=0x8000 op=FF05 len=7 data=7f000128/.test(line)));
 
   dimmer._request(0);
-  await runTimers(run.app.homey, 2000);
+  await runTimers(run.app.homey, 2000, ...READ_BACK);
   assert.equal(dimmer.getCapabilityValue('onoff'), false);
 
   // Status on request, and an order: changed on the device itself.
@@ -289,7 +296,7 @@ test('a fake device answers a command after 2 s, through the same reading as a r
   assert.equal(device.getCapabilityValue('dim'), 0.7);
   run.app.fakes.order('@SC7F01 silent');
   device._request(10);
-  await runTimers(run.app.homey, 2000);
+  await runTimers(run.app.homey, 2000, ...READ_BACK);
   assert.equal(device.getCapabilityValue('dim'), 0.7, 'a silent one does not answer');
   run.app.fakes.order('7F01 answer');
   run.app.fakes.order('7F02 level 50');
@@ -365,6 +372,7 @@ test('a fake device without a location id: its FF10 goes on the fake radio, neve
   assert.equal(device.getCsrLocationId(), 0x7f00);
   assert.ok(device.logs.includes('location id known: sending the kept level 40'));
   assert.equal(heardOf(run, 0xff03, 0x7f01), 1);
+  await runTimers(run.app.homey, ...READ_BACK);
   assert.equal(device.getCapabilityValue('dim'), 0.4);
   assert.deepEqual(run.realSends, []);
   assert.equal(run.app.csr._lastNameRequestAt, null, 'the real network sent no FF10');
@@ -400,7 +408,7 @@ test('the fake network never takes a real device: a fake answer never reaches a 
   run.app.fakes.order('7F01 level 70');
   await runTimers(run.app.homey, 0);
   device._request(20);
-  await runTimers(run.app.homey, 2000);
+  await runTimers(run.app.homey, 2000, ...READ_BACK);
   assert.equal(device.getCapabilityValue('dim'), 0.2);
   assert.equal(real.getCapabilityValue('dim'), undefined);
   assert.equal(real.getCapabilityValue('onoff'), undefined);
@@ -414,7 +422,7 @@ test('the thermostat guard of a fake device asks its own network, not the real o
   // Only the real network knows 0x7f01 as a thermostat's: not the fake device's.
   run.app.csr.nodes.set(0x7f01, thermostatNode(0x5a3c));
   device._request(30);
-  await runTimers(run.app.homey, 2000);
+  await runTimers(run.app.homey, 2000, ...READ_BACK);
   assert.equal(device.getCapabilityValue('dim'), 0.3);
   // The fake network knows it as one: no FF03.
   run.app.fakes.csr.nodes.set(0x7f01, thermostatNode(0x7f00));

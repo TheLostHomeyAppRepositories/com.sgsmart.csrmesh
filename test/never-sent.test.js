@@ -3,7 +3,8 @@
 // What this app never sends (the list in lib/fake/bridge.js says what each
 // is assumed to change in a device). No file in a build of the app can build
 // them, nothing the app does sends them, the first generation's A0 and
-// heartbeat among it, and the fake radio refuses them.
+// heartbeat among it, and the fake radio refuses them. Those a device may
+// send this app (READ_ONLY) may be read, never sent.
 // Run with: node --test test/*.test.js
 
 const test = require('node:test');
@@ -30,7 +31,14 @@ const { ROOT, buildFiles } = require('./helpers/build-files');
 const NEVER = [
   '8100', '7313', 'ef10', 'ef11', 'ff0f', 'ff28', 'ffaa', 'ff12', 'ff52', 'ff13', 'ff14', 'ff15', 'ff16', 'ff17',
   'ff1e', 'ff39', 'ff51', 'ff00', 'ff5a', 'ff40', 'ff3f', 'ff41', 'ff5b', 'ff43',
+  'ff0a', 'ff33', 'ff47', 'ff29', 'ff2a', 'ff48', 'ff4b', 'ff36', 'ff81',
 ];
+// Of NEVER, what a device may send this app. Its opcode may stand in
+// lib/sgProtocol.js only, as a constant whose name begins with IN_ (it is
+// only read), and that name never in a call to extData, which builds
+// everything the app sends.
+const READ_ONLY = ['ff0a'];
+const READ_ONLY_FILE = 'lib/sgProtocol.js';
 const KEY = deriveNetworkKey('test-only-pass');
 const LOC = 0x5a3c;
 const tick = () => new Promise((resolve) => setImmediate(resolve));
@@ -53,8 +61,65 @@ function waysToBuild(hex) {
   return ways;
 }
 
+// A read-only constant: const IN_<name> = [0xff, 0x0a];
+const readOnlyConstant = (hex) => new RegExp(`^\\s*const (IN_\\w+) = \\[0x${hex.slice(0, 2)}, 0x${hex.slice(2)}\\];\\s*$`, 'i');
+
+// The text of each call to name in text: from the name to its closing bracket.
+function callsTo(name, text) {
+  const calls = [];
+  for (let at = text.indexOf(`${name}(`); at !== -1; at = text.indexOf(`${name}(`, at + 1)) {
+    let depth = 0;
+    let end = at + name.length;
+    for (; end < text.length; end += 1) {
+      if (text[end] === '(') depth += 1;
+      else if (text[end] === ')' && (depth -= 1) === 0) break;
+    }
+    calls.push(text.slice(at, end + 1));
+  }
+  return calls;
+}
+
+// What in these files ([{ file, text }]) could build one, as 'file: hex' or
+// 'file: IN_<name> in extData'. A read-only constant in READ_ONLY_FILE is
+// left out of the search; its name may not stand in a call to extData.
+function neverHits(files) {
+  const hits = [];
+  const readOnlyNames = [];
+  for (const { file, text } of files) {
+    let rest = text;
+    if (file === READ_ONLY_FILE) {
+      rest = text.split('\n').filter((line) => {
+        const match = READ_ONLY.map((hex) => line.match(readOnlyConstant(hex))).find(Boolean);
+        if (match) readOnlyNames.push(match[1]);
+        return !match;
+      }).join('\n');
+    }
+    for (const hex of NEVER) if (waysToBuild(hex).some((way) => way.test(rest))) hits.push(`${file}: ${hex}`);
+  }
+  for (const { file, text } of files) {
+    for (const name of readOnlyNames) {
+      if (callsTo('extData', text).some((call) => new RegExp(`\\b${name}\\b`).test(call))) hits.push(`${file}: ${name} in extData`);
+    }
+  }
+  return hits;
+}
+
 test('the list is the one the fake radio refuses', () => {
   assert.deepEqual([...REFUSED].sort(), [...NEVER].sort());
+});
+
+test('a read-only opcode: an IN_ constant in lib/sgProtocol.js is fine; in extData, in another file or by another name it is caught', () => {
+  const constant = 'const IN_SCENE = [0xff, 0x0a];';
+  assert.deepEqual(neverHits([{ file: READ_ONLY_FILE, text: `// FF0A\n${constant}\n` }]), []);
+  assert.deepEqual(neverHits([{ file: READ_ONLY_FILE, text: `${constant}\nconst x = extData(dst, IN_SCENE, [1, (2)]);` }]),
+    ['lib/sgProtocol.js: IN_SCENE in extData']);
+  assert.deepEqual(neverHits([{ file: READ_ONLY_FILE, text: constant }, { file: 'lib/CsrNetwork.js', text: 'extData(\n  dst,\n  IN_SCENE, data)' }]),
+    ['lib/CsrNetwork.js: IN_SCENE in extData']);
+  assert.deepEqual(neverHits([{ file: 'lib/CsrNetwork.js', text: constant }]), ['lib/CsrNetwork.js: ff0a']);
+  assert.deepEqual(neverHits([{ file: READ_ONLY_FILE, text: 'const OP_EXT_SCENE = [0xff, 0x0a];' }]), ['lib/sgProtocol.js: ff0a']);
+  assert.deepEqual(neverHits([{ file: READ_ONLY_FILE, text: 'const IN_TRIM = [0xff, 0x29];' }]), ['lib/sgProtocol.js: ff29'],
+    'only READ_ONLY may be read');
+  assert.deepEqual(neverHits([{ file: READ_ONLY_FILE, text: `${constant}\nextData(dst, OP_EXT_LEVEL, data);` }]), []);
 });
 
 test('the ways to build one are caught, and the bytes the app does build are not', () => {
@@ -73,12 +138,7 @@ test('no file in a build of the app can build them', async () => {
   const files = (await buildFiles()).filter((file) => /\.(js|json|html)$/.test(file));
   assert.ok(files.includes('lib/sgProtocol.js') && files.includes('drivers/sg_plug/device.js'));
   assert.ok(!files.some((file) => file.startsWith('lib/fake/')), 'the fake radio, which names them to refuse them, is not in a build');
-  const hits = [];
-  for (const file of files) {
-    const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
-    for (const hex of NEVER) if (waysToBuild(hex).some((way) => way.test(text))) hits.push(`${file}: ${hex}`);
-  }
-  assert.deepEqual(hits, []);
+  assert.deepEqual(neverHits(files.map((file) => ({ file, text: fs.readFileSync(path.join(ROOT, file), 'utf8') }))), []);
 });
 
 // ---- nothing the app does sends them
@@ -188,6 +248,25 @@ test('nothing the app does sends them: names, statuses, a thermostat read and se
   for (const expected of ['ff10', 'ff04', 'ffff', 'ff3c', 'ff03', 'ff3e', 'ff42', '73a0', '73cc']) assert.ok(opcodes.has(expected), `${expected} was sent`);
   assert.deepEqual(sent.filter((plain) => NEVER.includes(opcodeOf(plain))).map(opcodeOf), []);
   assert.ok(sent.length >= 15, `${sent.length} sent`);
+});
+
+test('an FF0A that comes in is only logged: nothing goes out as an answer', async () => {
+  const { app, sent } = recordingApp();
+  const light = new SGCsrDevice({
+    homey: app.homey, store: { meshId: 0x0123, prefix: '@SW', kind: 'dimmable', locationId: LOC },
+    settings: { passphrase: 'test-only-pass' }, data: { id: '@SW1A2B' }, name: '@SW',
+  });
+  light.hasCapability = (capability) => ['onoff', 'dim'].includes(capability);
+  app._devices = () => [light];
+  await light.onInit();
+  const before = { sent: sent.length, timers: app.homey.pending.size };
+  for (const dst of [0x0000, 0x8000, 0x0123]) {
+    app.csr.handleFrame({ src: 0x0124, plain: Buffer.from([dst & 0xff, dst >> 8, 0xff, 0x0a, LOC >> 8, LOC & 0xff, 0x01, 0x05, 0x00]) });
+  }
+  for (let j = 0; j < 5; j += 1) await tick();
+  assert.equal(sent.length, before.sent);
+  assert.equal(app.homey.pending.size, before.timers, 'nothing on its way either');
+  assert.ok(app.logs.some((line) => /\bop=FF0A\b/.test(line)), 'logged');
 });
 
 // ---- the fake radio refuses them
