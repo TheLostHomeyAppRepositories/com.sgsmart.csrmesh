@@ -403,11 +403,20 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   const guides = ['sg_mesh', 'sg_pill', 'sg_plug', 'sg_thermostat'].map((driver) => read(`drivers/${driver}/pair/guide.html`));
   for (const guide of guides) assert.equal(guide, guides[0], 'one guide for all four');
   assert.ok(guides[0].includes("Homey.emit('account')") && guides[0].includes("Homey.__('pair.guide.passwordAccount')"));
+  // 2.6.1 is Live, and 2.6.2 is not published on its own: the 2.7.0
+  // changelog is Trond's short text alone, with the dimmer fixes of 2.6.2 in
+  // "Dimmer fixes", and nothing from 2.6.1.
   const changelogs = JSON.parse(read('.homeychangelog.json'));
-  assert.equal(changelogs['2.7.0'].en, `${changelogs['2.6.2'].en} New: log in with your SG account in the app settings to fetch `
-    + 'your network password and device list. Your password is not stored.');
-  assert.equal(changelogs['2.7.0'].no, `${changelogs['2.6.2'].no} Nytt: logg inn med SG-kontoen i appens innstillinger for å hente `
-    + 'nettverkspassordet og enhetslista. Passordet ditt lagres ikke.');
+  assert.equal(changelogs['2.6.2'], undefined);
+  assert.deepEqual(changelogs['2.7.0'], {
+    en: 'Optional: log in with your SG account in the app settings to fetch the network password and device names. Dimmer fixes.',
+    no: 'Valgfritt: logg inn med SG-kontoen i appens innstillinger for å hente nettverkspassordet og navnene på enhetene. '
+      + 'Rettinger for dimmere.',
+  });
+  for (const language of ['en', 'no']) {
+    const live = changelogs['2.6.1'][language].split(/(?<=\.) /);
+    assert.deepEqual(live.filter((sentence) => changelogs['2.7.0'][language].includes(sentence)), [], `${language}: nothing from 2.6.1`);
+  }
 });
 
 // ---- the type in the account
