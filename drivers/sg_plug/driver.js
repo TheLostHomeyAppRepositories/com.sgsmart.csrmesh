@@ -2,7 +2,7 @@
 
 const Homey = require('homey');
 const {
-  accountFindings, foundNote, laterDevice, laterNodes, pairInLoadingView, quietInAccount, sgNodesLine, withStates,
+  accountFindings, foundNote, laterDevice, laterNodes, named, pairInLoadingView, quietInAccount, sgNodesLine, withStates,
 } = require('../../lib/csrPairing');
 
 // Smart Plug and Smart Socket (lib/sgProducts.js, PLUG_PREFIXES): sockets
@@ -55,7 +55,7 @@ class SGPlugDriver extends Homey.Driver {
     const { nodes, out } = await laterNodes(this);
     const added = new Set(this.getDevices().map((device) => String((device.getData() || {}).id || '')));
     const found = withStates(accountFindings(this, advertisements, nodes), 'sg_plug', added);
-    const devices = found.filter((f) => f.state === 'add').map((f) => laterDevice(f, { icons: true }));
+    const devices = found.filter((f) => f.state === 'add').map((f) => named(this, laterDevice(f, { icons: true }), f.node.meshId));
     // Counts and prefixes only: no addresses or names in the log.
     const states = found.map((f) => `${f.product.prefix} ${f.product.generation} ${f.product.kind} ${f.state}`);
     this.log(`pair: scan ${seconds.toFixed(1)} s, ${advertisements.length} advertisement(s), ${nodes.length} FF11 answer(s), `

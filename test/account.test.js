@@ -18,7 +18,7 @@ fake.install();
 
 const { deriveNetworkKey, resolveKey } = require('../lib/csrmesh');
 const {
-  INTERFACE_VERSION, SETTING, SgAccount, loadAccountModule,
+  INTERFACE_VERSIONS, SETTING, SgAccount, loadAccountModule,
 } = require('../lib/account');
 const {
   CSR_PRODUCTS, FIRST_GENERATION_TYPE, TYPE_PREFIXES, csrProductForType, driverForType, familyForType,
@@ -150,12 +150,14 @@ test('a login keeps per home the passphrase when it is not 1234, the 3.0 keys an
   assert.deepEqual([...app.homey.settings.values.keys()], [SETTING], 'one setting');
   const kept = app.homey.settings.values.get(SETTING);
   assert.deepEqual(kept.homes, [
-    { passphrase: ISOLATED, netKey: NET_KEY, appKey: APP_KEY, locationId: 0x4242, devices: HOMES()[0].devices.slice(0, 5) },
-    { passphrase: null, netKey: NET_KEY, appKey: APP_KEY, locationId: null, devices: HOMES()[1].devices },
+    { passphrase: ISOLATED, netKey: NET_KEY, appKey: APP_KEY, locationId: 0x4242,
+      devices: HOMES()[0].devices.slice(0, 5).map((device) => ({ ...device, name: null })) },
+    { passphrase: null, netKey: NET_KEY, appKey: APP_KEY, locationId: null,
+      devices: HOMES()[1].devices.map((device) => ({ ...device, name: null })) },
   ]);
   const stored = JSON.stringify([...app.homey.settings.values]);
   for (const word of [EMAIL, PASSWORD]) assert.ok(!stored.includes(word), word);
-  assert.ok(app.logs.some((line) => /kept 2 home\(s\): passphrase other than 1234 for 1, 3\.0 keys for 2, 7 device\(s\), 1 without a mesh id left out/.test(line)));
+  assert.ok(app.logs.some((line) => /kept 2 home\(s\): passphrase other than 1234 for 1, 3\.0 keys for 2, 7 device\(s\), 1 without a mesh id left out, 0 with a name/.test(line)));
 });
 
 test('a failed login keeps what was there, never the e-mail or the password, and says what kind of error it was', async () => {
@@ -536,16 +538,20 @@ test('a module that does not load, or has another interface version, counts as m
   for (const [load, why] of [
     [broken, 'did not load (TypeError)'],
     [missingInside, 'did not load (Error)'],
-    [() => ({ interfaceVersion: 99, fetchHomes: async () => ({}) }), 'has interface 99 where 1 is needed'],
-    [() => ({ interfaceVersion: INTERFACE_VERSION }), 'has no fetchHomes'],
-    [() => null, 'has interface null where 1 is needed'],
+    [() => ({ interfaceVersion: 99, fetchHomes: async () => ({}) }), 'has interface 99 where 1 or 2 is needed'],
+    [() => ({ interfaceVersion: 3, fetchHomes: async () => ({}) }), 'has interface 3 where 1 or 2 is needed'],
+    [() => ({ interfaceVersion: 2 }), 'has no fetchHomes'],
+    [() => null, 'has interface null where 1 or 2 is needed'],
   ]) {
     const found = loadAccountModule(load);
     assert.equal(found.fetch, null, why);
     assert.equal(found.why, why);
   }
   const fetchHomes = async () => ({ homes: [], loggedOut: true });
-  assert.equal(loadAccountModule(() => ({ interfaceVersion: INTERFACE_VERSION, fetchHomes })).fetch, fetchHomes);
+  assert.deepEqual(INTERFACE_VERSIONS, [1, 2]);
+  for (const interfaceVersion of INTERFACE_VERSIONS) {
+    assert.equal(loadAccountModule(() => ({ interfaceVersion, fetchHomes })).fetch, fetchHomes, `interface ${interfaceVersion}`);
+  }
   // The app starts with no module: it is only noted in the log.
   const app = appWith([]);
   app.account = new SgAccount(app, { load: missingModule });

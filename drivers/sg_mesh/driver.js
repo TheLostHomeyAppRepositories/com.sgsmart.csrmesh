@@ -3,7 +3,8 @@
 const Homey = require('homey');
 const { NODE_NAME, meshIdFromName } = require('../../lib/csrmesh');
 const {
-  accountFindings, foundNote, laterDevice, laterFindings, laterNodes, pairInLoadingView, quietInAccount, withStates,
+  accountFindings, foundNote, laterDevice, laterFindings, laterNodes, named, pairInLoadingView, quietInAccount,
+  withStates,
 } = require('../../lib/csrPairing');
 const { csrDriverFor, csrProductForName } = require('../../lib/sgProducts');
 const { isFakeId } = require('../../lib/fakeDevices');
@@ -177,10 +178,11 @@ class SGMeshDriver extends Homey.Driver {
     // stable broadcast identity, which is also what Homey uses to filter out
     // already-paired devices. A dimmer whose status has been heard brings its
     // location id; any other learns it from its first status (see
-    // SGDeviceBase).
+    // SGDeviceBase). With an SG account, the name the user gave it in the SG
+    // app instead, when there is one (lib/csrPairing.js, named).
     const devices = candidates.map(([localName, adv]) => {
       const location = this.homey.app.locationFor ? this.homey.app.locationFor(meshIdFromName(localName)) : null;
-      return {
+      return named(this, {
         name: `LEDDim Smart ${localName.slice(3)}`,
         data: { id: localName },
         store: {
@@ -189,14 +191,14 @@ class SGMeshDriver extends Homey.Driver {
           localName,
           ...(location === null ? {} : { locationId: location }),
         },
-      };
+      }, meshIdFromName(localName));
     });
 
     // The later generations: an FF10 only when the scan saw an SG name that
     // is not @ND, so a home with first generation dimmers only gets nothing
     // new on the radio.
     const later = laterFindings(advertisements, []).length ? await this._later(advertisements, addedIds) : [];
-    devices.push(...later.filter((f) => f.state === 'add').map((f) => laterDevice(f)));
+    devices.push(...later.filter((f) => f.state === 'add').map((f) => named(this, laterDevice(f), f.node.meshId)));
     // No rotary dimmer at all: what was found instead (lib/csrPairing.js).
     const note = candidates.length ? '' : foundNote(later, (key, tokens) => this.homey.__(key, tokens), 'sg_mesh');
     const dimmers = candidates.length + later.filter((f) => f.state === 'add' || f.state === 'added').length;
