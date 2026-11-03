@@ -1010,6 +1010,62 @@ test('after a command to a dimmer: one FF04 9 s after the last one, which ends t
   assert.deepEqual(app.csr.statuses, [[MESH_ID, LOC]]);
 });
 
+test('a dimmer deleted or stopped 2 s after a command: nothing goes out at 9 s, also when its send ends after that', async () => {
+  const readBacks = (d) => [...d.homey.pending.values()].filter((timer) => timer.ms === 9000).length;
+  for (const stop of ['onDeleted', 'onUninit']) {
+    const app = deviceApp();
+    const device = await csrDevice(app, { locationId: LOC });
+    const realNow = Date.now;
+    let t = 5000000;
+    Date.now = () => t;
+    try {
+      device._request(40);
+      await tick();
+      assert.equal(readBacks(device), 1, stop);
+      t += 2000;
+      await device[stop]();
+      assert.equal(readBacks(device), 0, stop);
+      t += 7000;
+      device.homey.runMs(9000);
+      await tick();
+    } finally {
+      Date.now = realNow;
+    }
+    assert.equal(app.sent.length, 1, `${stop}: only the FF03`);
+    assert.deepEqual(app.csr.statuses, [], stop);
+  }
+  // Its send still on its way when it is deleted.
+  const app = deviceApp();
+  let finish;
+  app.bridge.send = () => new Promise((resolve) => { finish = resolve; });
+  const device = await csrDevice(app, { locationId: LOC });
+  device._request(40);
+  await tick();
+  await device.onDeleted();
+  finish({ ok: true });
+  await tick();
+  assert.equal(readBacks(device), 0);
+  device.homey.runMs(9000);
+  await tick();
+  assert.deepEqual(app.csr.statuses, []);
+});
+
+test('a read-back that fails gets a line in the log, and nothing is thrown', async () => {
+  const app = deviceApp();
+  const device = await csrDevice(app, { locationId: LOC });
+  device._request(40);
+  await tick();
+  app.csr.requestStatus = async () => { throw new Error('link lost'); };
+  device.homey.runMs(9000);
+  await tick();
+  assert.ok(device.errors.includes('read-back failed: link lost'));
+  device._request(50);
+  await tick();
+  device.getCsrLocationId = () => { throw new Error('no location'); };
+  assert.doesNotThrow(() => device.homey.runMs(9000));
+  assert.ok(device.errors.includes('read-back failed: no location'));
+});
+
 test('status is asked for after start and then every 10 minutes; without a location id, names instead', async () => {
   const app = deviceApp();
   const device = await csrDevice(app, { locationId: LOC });
