@@ -3,8 +3,8 @@
 const Homey = require('homey');
 const { NODE_NAME, meshIdFromName } = require('../../lib/csrmesh');
 const {
-  accountFindings, foundNote, laterDevice, laterFindings, laterNodes, named, pairInLoadingView, quietInAccount,
-  withStates,
+  accountFindings, foundNote, laterDevice, laterFindings, laterNodes, loginHint, named, pairInLoadingView,
+  quietInAccount, withStates,
 } = require('../../lib/csrPairing');
 const { csrDriverFor, csrProductForName } = require('../../lib/sgProducts');
 const { isFakeId } = require('../../lib/fakeDevices');
@@ -130,8 +130,12 @@ class SGMeshDriver extends Homey.Driver {
   // were found, which reads better under its fixed heading than a text of
   // ours (Athom: devices-list.md, "when no devices are found, return an empty
   // array"). Homey filters out the added ones in the other lists itself.
-  _listFrom({ devices, reason, note }) {
-    if (reason === 'none') return { error: 'none', text: note || this.homey.__('pair.noDimmersFound') };
+  // A later dimmer seen but without an answer to FF10, and no SG account
+  // fetched (hint, lib/csrPairing.js loginHint): the login text instead of
+  // the general advice or the empty list.
+  _listFrom({ devices, reason, note, hint }) {
+    if (reason === 'none') return { error: 'none', text: note || hint || this.homey.__('pair.noDimmersFound') };
+    if (reason === 'allAdded' && hint) return { error: 'all added, a later dimmer did not answer, no SG account', text: hint };
     if (reason === 'allAdded') return { devices: [], why: 'all added' };
     return { devices };
   }
@@ -206,7 +210,8 @@ class SGMeshDriver extends Homey.Driver {
     // one counts as heard when the scan saw its @ND name.
     const quiet = quietInAccount(this, 'sg_mesh', candidates.map(([localName]) => meshIdFromName(localName)));
 
-    const extra = quiet.length ? { quiet } : {};
+    const hint = loginHint(this, later, 'sg_mesh');
+    const extra = { ...(quiet.length ? { quiet } : {}), ...(hint ? { hint } : {}) };
     if (!dimmers) return { devices, reason: 'none', note, ...extra };
     if (devices.every((device) => addedIds.has(device.data.id))) return { devices, reason: 'allAdded', note, ...extra };
     return { devices, reason: null, note, ...extra };

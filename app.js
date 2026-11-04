@@ -241,7 +241,9 @@ class SGSmartApp extends Homey.App {
 
   // MeshBridge heard frames but could read no status: every dimmer shows why
   // as a warning, and stays available, until a status is read. The timeline
-  // gets one notification as well, at most once per start.
+  // gets one notification as well, at most once per start. Both point to the
+  // login in the app settings while it can bring the password
+  // (_loginMayHelp), else to the device settings as before.
   statusUnreadable() {
     if (this._statusUnreadable) return;
     this._statusUnreadable = true;
@@ -249,13 +251,28 @@ class SGSmartApp extends Homey.App {
     this._updateAvailability();
     if (this._passwordNotified || !this.homey.notifications) return;
     this._passwordNotified = true;
-    this.homey.notifications.createNotification({ excerpt: this.homey.__('notification.passwordWrong') })
+    const excerpt = this.homey.__(this._loginMayHelp() ? 'notification.passwordWrongLogin' : 'notification.passwordWrong');
+    this.homey.notifications.createNotification({ excerpt })
       .then(() => this.log('timeline notification sent: suspected wrong password'))
       .catch((err) => this.error(`timeline notification failed: ${err.message || err}`));
   }
 
   statusUnreadableText() {
-    return this._statusUnreadable ? this.homey.__('device.passwordWrong') : null;
+    if (!this._statusUnreadable) return null;
+    return this.homey.__(this._loginMayHelp() ? 'device.passwordWrongLogin' : 'device.passwordWrong');
+  }
+
+  // The SG account module is in this build and no account is fetched: the
+  // login may bring the network password (lib/account.js).
+  _loginMayHelp() {
+    return !!(this.account && this.account.available() && !this.account.fetched());
+  }
+
+  // From lib/account.js after a fetch or "Forget SG account": while no
+  // status can be read, the dimmers' warning is said again, as it depends on
+  // whether an account is fetched.
+  accountChanged() {
+    if (this._statusUnreadable) this._updateAvailability();
   }
 
   _statusReadable() {

@@ -2,7 +2,8 @@
 
 const Homey = require('homey');
 const {
-  accountFindings, foundNote, laterNodes, named, pairInLoadingView, quietInAccount, sgNodesLine, thermostatDevice, withStates,
+  accountFindings, foundNote, laterNodes, loginHint, named, pairInLoadingView, quietInAccount, sgNodesLine, thermostatDevice,
+  withStates,
 } = require('../../lib/csrPairing');
 
 // HeatReg Smart (lib/sgProducts.js, THERMOSTAT_PREFIXES), found and added as
@@ -33,6 +34,10 @@ class SGThermostatDriver extends Homey.Driver {
     const note = foundNote(found, (key, tokens) => this.homey.__(key, tokens), 'sg_thermostat');
     if (note) return { error: 'found, none to add', text: note };
     if (devices.length === 0) {
+      // Seen but no answer, and no SG account fetched: the login may bring the
+      // password (lib/csrPairing.js, loginHint).
+      const hint = loginHint(this, found, 'sg_thermostat');
+      if (hint) return { error: 'no answer from a thermostat seen, no SG account', text: hint };
       return { devices, why: found.some((f) => f.state === 'noAnswer') ? 'no answer from a thermostat seen' : 'all added' };
     }
     return { devices };

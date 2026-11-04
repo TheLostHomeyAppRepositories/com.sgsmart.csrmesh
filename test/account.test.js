@@ -421,8 +421,9 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   const changelogs = JSON.parse(read('.homeychangelog.json'));
   assert.equal(changelogs['2.6.2'], undefined);
   assert.deepEqual(changelogs['2.7.0'], {
-    en: 'Optional: log in with your SG account in the app settings to fetch the network password and device names. Dimmer fixes.',
-    no: 'Valgfritt: logg inn med SG-kontoen i appens innstillinger for å hente nettverkspassordet og navnene på enhetene. '
+    en: 'New, optional login with your SG account in the app settings. It fetches the network password and the device names. '
+      + 'Dimmer fixes.',
+    no: 'Ny, valgfri innlogging med SG-kontoen i appens innstillinger. Den henter nettverkspassordet og navnene på enhetene. '
       + 'Rettinger for dimmere.',
   });
   for (const language of ['en', 'no']) {

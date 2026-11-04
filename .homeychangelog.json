@@ -77,7 +77,7 @@
     "no": "Senere generasjoner av LEDDim Smart og LEDDim Smart Pill kan nå legges til og styres. Smart Plug og Smart Socket kan legges til, med av og på og nedtelling. Smart Plug som SG har tilbakekalt, kan ikke legges til. HeatReg Smart-gulvtermostater kan legges til: Homey viser temperaturene og kan sette ønsket temperatur, av og på og forhåndsinnstillingen. Alt dette er under utprøving. Ny veiledning før søk etter enheter. Innstillingene er ryddigere, og du kan nå vise og kopiere loggen der."
   },
   "2.7.0": {
-    "en": "Optional: log in with your SG account in the app settings to fetch the network password and device names. Dimmer fixes.",
-    "no": "Valgfritt: logg inn med SG-kontoen i appens innstillinger for å hente nettverkspassordet og navnene på enhetene. Rettinger for dimmere."
+    "en": "New, optional login with your SG account in the app settings. It fetches the network password and the device names. Dimmer fixes.",
+    "no": "Ny, valgfri innlogging med SG-kontoen i appens innstillinger. Den henter nettverkspassordet og navnene på enhetene. Rettinger for dimmere."
   }
 }

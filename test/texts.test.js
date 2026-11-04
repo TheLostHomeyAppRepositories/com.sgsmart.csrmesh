@@ -41,7 +41,7 @@ const advice = [
 // The warnings a dimmer's tile can show.
 const warnings = [];
 for (const [language, locale] of [['en', en], ['no', no]]) {
-  for (const key of ['passwordWrong', 'waitingForStatus', 'notHeard']) {
+  for (const key of ['passwordWrong', 'passwordWrongLogin', 'waitingForStatus', 'notHeard']) {
     warnings.push([`${language} device.${key}`, locale.device[key]]);
   }
 }
@@ -147,6 +147,20 @@ test('README says one thing about 1234: the passphrase, unless Network Isolation
 test('the timeline notification names the app and the problem, in both languages', () => {
   assert.match(en.notification.passwordWrong, /^Possibly wrong network password in SG LEDDim\./);
   assert.match(no.notification.passwordWrong, /^Mulig feil nettverkspassord i SG LEDDim\./);
+});
+
+test('with the SG account module and no account fetched, the warning and the timeline point to the login, not to Network Isolation', () => {
+  assert.equal(no.device.passwordWrongLogin, 'Mulig feil nettverkspassord. Logg inn med SG-kontoen i appens innstillinger.');
+  assert.equal(en.device.passwordWrongLogin, 'Network password may be wrong. Log in with your SG account in the app settings.');
+  assert.equal(no.notification.passwordWrongLogin, 'Mulig feil nettverkspassord i SG LEDDim. Logg inn med SG-kontoen i appens innstillinger.');
+  assert.equal(en.notification.passwordWrongLogin,
+    'Possibly wrong network password in SG LEDDim. Log in with your SG account in the app settings.');
+  for (const [language, locale] of [['en', en], ['no', no]]) {
+    const text = locale.notification.passwordWrongLogin;
+    assert.ok(text.length <= NOTIFICATION_MAX, `${language}: ${text.length}`);
+    assert.doesNotMatch(text, /Network Isolation|Nettverksisolasjon/, language);
+    assert.doesNotMatch(text, TURN_OFF[language], language);
+  }
 });
 
 test('straight quotes only, in every text', () => {
@@ -286,7 +300,13 @@ test('the Pill driver (sg_pill): the same texts in both languages, all used; no 
   }
   assert.equal(no.pair.csr.failed, 'Søket mislyktes. Prøv igjen om litt.');
   assert.equal(en.pair.csr.failed, 'Search failed. Try again in a moment.');
-  assert.deepEqual(Object.keys(en.pair.csr), ['failed'], 'nothing found is an empty list, with Homey\'s own text');
+  // Nothing found is an empty list, with Homey's own text; seen but without
+  // an answer, and no SG account fetched, the login text (lib/csrPairing.js).
+  assert.deepEqual(Object.keys(en.pair.csr), ['failed', 'noAnswerLogin']);
+  assert.equal(no.pair.csr.noAnswerLogin, 'Fant SG-enheter som ikke svarte. Det kan være feil nettverkspassord. '
+    + 'Logg inn med SG-kontoen i appens innstillinger for å hente det riktige.');
+  assert.equal(en.pair.csr.noAnswerLogin, 'Found SG devices that did not respond. The network password may be wrong. '
+    + 'Log in with your SG account in the app settings to fetch the right one.');
   // The generation is only in the log, and the trial only in the store
   // text, "Other SG devices" and README; device names are "LEDDim Smart Pill 1A2B".
   for (const driver of ['sg_mesh', 'sg_pill', 'sg_plug', 'sg_thermostat']) {

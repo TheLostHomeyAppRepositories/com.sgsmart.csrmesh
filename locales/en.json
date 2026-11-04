@@ -10,7 +10,8 @@
       "pickOne": "Select at least one dimmer."
     },
     "csr": {
-      "failed": "Search failed. Try again in a moment."
+      "failed": "Search failed. Try again in a moment.",
+      "noAnswerLogin": "Found SG devices that did not respond. The network password may be wrong. Log in with your SG account in the app settings to fetch the right one."
     },
     "found": {
       "noDimmer": "No rotary dimmers found.",
@@ -120,6 +121,7 @@
     "waitingForStatus": "Waiting for the dimmer's first status.",
     "recalled": "Recalled by SG. See sg-as.com.",
     "passwordWrong": "Possibly wrong network password. Check settings.",
+    "passwordWrongLogin": "Network password may be wrong. Log in with your SG account in the app settings.",
     "fakeLeftOver": "Test device from a development run. Nothing is sent. Delete it.",
     "connection": {
       "directGood": "Direct, good",
@@ -129,7 +131,8 @@
     "badMeshId": "This device has no valid mesh id. Delete it and add it again."
   },
   "notification": {
-    "passwordWrong": "Possibly wrong network password in SG LEDDim. Check Network Isolation in the SG app, or enter the correct password in the settings for each device."
+    "passwordWrong": "Possibly wrong network password in SG LEDDim. Check Network Isolation in the SG app, or enter the correct password in the settings for each device.",
+    "passwordWrongLogin": "Possibly wrong network password in SG LEDDim. Log in with your SG account in the app settings."
   },
   "thermostat": {
     "controlOff": "Control from Homey is off for this thermostat. Turn it on in its settings.",

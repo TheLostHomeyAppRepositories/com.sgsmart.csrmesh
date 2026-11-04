@@ -10,7 +10,8 @@
       "pickOne": "Velg minst én dimmer."
     },
     "csr": {
-      "failed": "Søket mislyktes. Prøv igjen om litt."
+      "failed": "Søket mislyktes. Prøv igjen om litt.",
+      "noAnswerLogin": "Fant SG-enheter som ikke svarte. Det kan være feil nettverkspassord. Logg inn med SG-kontoen i appens innstillinger for å hente det riktige."
     },
     "found": {
       "noDimmer": "Fant ingen dreiedimmere.",
@@ -120,6 +121,7 @@
     "waitingForStatus": "Venter på første status fra dimmeren.",
     "recalled": "Tilbakekalt av SG. Se sg-as.com.",
     "passwordWrong": "Mulig feil nettverkspassord. Sjekk innstillingene.",
+    "passwordWrongLogin": "Mulig feil nettverkspassord. Logg inn med SG-kontoen i appens innstillinger.",
     "fakeLeftOver": "Testenhet fra en utviklingskjøring. Ingenting sendes. Slett den.",
     "connection": {
       "directGood": "Direkte, godt",
@@ -129,7 +131,8 @@
     "badMeshId": "Enheten har ikke en gyldig mesh id. Slett den og legg den til på nytt."
   },
   "notification": {
-    "passwordWrong": "Mulig feil nettverkspassord i SG LEDDim. Sjekk Nettverksisolasjon (Network Isolation) i SG-appen, eller legg inn riktig passord i innstillingene for hver enhet."
+    "passwordWrong": "Mulig feil nettverkspassord i SG LEDDim. Sjekk Nettverksisolasjon (Network Isolation) i SG-appen, eller legg inn riktig passord i innstillingene for hver enhet.",
+    "passwordWrongLogin": "Mulig feil nettverkspassord i SG LEDDim. Logg inn med SG-kontoen i appens innstillinger."
   },
   "thermostat": {
     "controlOff": "Styring fra Homey er av for denne termostaten. Slå den på i innstillingene.",
