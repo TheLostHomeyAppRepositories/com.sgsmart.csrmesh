@@ -141,5 +141,23 @@
       "E1": "Ingen måling fra gulvføleren (E1).",
       "L0": "Termostaten måler 0 °C (L0)."
     }
+  },
+  "time": {
+    "sameYear": "__day__. __month__ kl. __time__",
+    "otherYear": "__day__. __month__ __year__ kl. __time__",
+    "months": {
+      "jan": "jan.",
+      "feb": "feb.",
+      "mar": "mar.",
+      "apr": "apr.",
+      "may": "mai",
+      "jun": "jun.",
+      "jul": "jul.",
+      "aug": "aug.",
+      "sep": "sep.",
+      "oct": "okt.",
+      "nov": "nov.",
+      "dec": "des."
+    }
   }
 }

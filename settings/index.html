@@ -210,8 +210,10 @@
         }
         const status = [];
         if (summary.error) status.push(Homey.__(`settings.account.error.${summary.error}`));
+        // fetchedAtShown is in Homey's time zone, made on Homey (lib/
+        // localTime.js), not in the browser's.
         if (summary.checking) status.push(Homey.__('settings.account.asking'));
-        else if (fetched) status.push(Homey.__('settings.account.fetchedAt', { when: when(summary.fetchedAt) }));
+        else if (fetched) status.push(Homey.__('settings.account.fetchedAt', { when: summary.fetchedAtShown || when(summary.fetchedAt) }));
         accountStatus.textContent = status.join(' ');
         if (summary.checking) accountTimer = setTimeout(refreshAccount, 3000);
       };

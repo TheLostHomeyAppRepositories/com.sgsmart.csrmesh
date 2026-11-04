@@ -141,5 +141,23 @@
       "E1": "No reading from the floor sensor (E1).",
       "L0": "The thermostat reads 0 °C (L0)."
     }
+  },
+  "time": {
+    "sameYear": "__day__ __month__, __time__",
+    "otherYear": "__day__ __month__ __year__, __time__",
+    "months": {
+      "jan": "Jan",
+      "feb": "Feb",
+      "mar": "Mar",
+      "apr": "Apr",
+      "may": "May",
+      "jun": "Jun",
+      "jul": "Jul",
+      "aug": "Aug",
+      "sep": "Sep",
+      "oct": "Oct",
+      "nov": "Nov",
+      "dec": "Dec"
+    }
   }
 }
