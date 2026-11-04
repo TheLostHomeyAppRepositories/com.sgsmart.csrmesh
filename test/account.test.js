@@ -151,13 +151,13 @@ test('a login keeps per home the passphrase when it is not 1234, the 3.0 keys an
   const kept = app.homey.settings.values.get(SETTING);
   assert.deepEqual(kept.homes, [
     { passphrase: ISOLATED, netKey: NET_KEY, appKey: APP_KEY, locationId: 0x4242,
-      devices: HOMES()[0].devices.slice(0, 5).map((device) => ({ ...device, name: null })) },
+      devices: HOMES()[0].devices.slice(0, 5).map((device) => ({ ...device, name: null, certain: true })) },
     { passphrase: null, netKey: NET_KEY, appKey: APP_KEY, locationId: null,
-      devices: HOMES()[1].devices.map((device) => ({ ...device, name: null })) },
+      devices: HOMES()[1].devices.map((device) => ({ ...device, name: null, certain: true })) },
   ]);
   const stored = JSON.stringify([...app.homey.settings.values]);
   for (const word of [EMAIL, PASSWORD]) assert.ok(!stored.includes(word), word);
-  assert.ok(app.logs.some((line) => /kept 2 home\(s\): passphrase other than 1234 for 1, 3\.0 keys for 2, 7 device\(s\), 1 without a mesh id left out, 0 with a name/.test(line)));
+  assert.ok(app.logs.some((line) => /kept 2 home\(s\): passphrase other than 1234 for 1, 3\.0 keys for 2, 7 device\(s\), 1 without a mesh id left out, 0 with a name, 0 uncertain$/.test(line)));
 });
 
 test('a failed login keeps what was there, never the e-mail or the password, and says what kind of error it was', async () => {
@@ -295,7 +295,7 @@ test('the check: one FF04 to each later CSRmesh device with a location id, none 
       quiet: [], unknown: [{ product: 'LEDDim Smart', type: 1, address: '8006' }],
     },
   ]);
-  assert.ok(app.logs.includes('[SG account] check: 3 of 5 answer, 2 FF04 sent, 1 unknown (no location id), 1 SG Smart 3.0 not asked'));
+  assert.ok(app.logs.includes('[SG account] check: 3 of 5 answer, 2 FF04 sent, 1 unknown (no location id), 0 uncertain (not counted), 1 SG Smart 3.0 not asked'));
   // The check is kept, and the next login asks again, once each.
   assert.ok(app.homey.settings.get(SETTING).check);
   await app.account.login(EMAIL, PASSWORD);
@@ -559,17 +559,17 @@ test('a module that does not load, or has another interface version, counts as m
   for (const [load, why] of [
     [broken, 'did not load (TypeError)'],
     [missingInside, 'did not load (Error)'],
-    [() => ({ interfaceVersion: 99, fetchHomes: async () => ({}) }), 'has interface 99 where 1 or 2 is needed'],
-    [() => ({ interfaceVersion: 3, fetchHomes: async () => ({}) }), 'has interface 3 where 1 or 2 is needed'],
+    [() => ({ interfaceVersion: 99, fetchHomes: async () => ({}) }), 'has interface 99 where 1 or 2 or 3 is needed'],
+    [() => ({ interfaceVersion: 4, fetchHomes: async () => ({}) }), 'has interface 4 where 1 or 2 or 3 is needed'],
     [() => ({ interfaceVersion: 2 }), 'has no fetchHomes'],
-    [() => null, 'has interface null where 1 or 2 is needed'],
+    [() => null, 'has interface null where 1 or 2 or 3 is needed'],
   ]) {
     const found = loadAccountModule(load);
     assert.equal(found.fetch, null, why);
     assert.equal(found.why, why);
   }
   const fetchHomes = async () => ({ homes: [], loggedOut: true });
-  assert.deepEqual(INTERFACE_VERSIONS, [1, 2]);
+  assert.deepEqual(INTERFACE_VERSIONS, [1, 2, 3]);
   for (const interfaceVersion of INTERFACE_VERSIONS) {
     assert.equal(loadAccountModule(() => ({ interfaceVersion, fetchHomes })).fetch, fetchHomes, `interface ${interfaceVersion}`);
   }

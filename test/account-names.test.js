@@ -130,7 +130,7 @@ test('the names are kept with the device list, cleaned, and a name the app canno
   const kept = app.homey.settings.get(SETTING).homes[0].devices;
   assert.deepEqual(kept.map((device) => device.name),
     ['Stue', null, null, null, 'Made-up shared', null, 'Kjøkken taklys', null, 'Made-up hall']);
-  assert.ok(app.logs.some((line) => /kept 2 home\(s\).*10 device\(s\), 5 with a name$/.test(line)));
+  assert.ok(app.logs.some((line) => /kept 2 home\(s\).*10 device\(s\), 5 with a name, 0 uncertain$/.test(line)));
 });
 
 test('nameFor: the name of a mesh id in exactly one home; none in two homes, none unknown, none without an account', async () => {

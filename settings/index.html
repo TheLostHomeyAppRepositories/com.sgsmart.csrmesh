@@ -183,7 +183,8 @@
       const homeText = (home) => {
         const texts = [Homey.__('settings.account.home', { number: home.number, devices: home.devices }),
           Homey.__(home.passphrase ? 'settings.account.passwordFetched' : 'settings.account.passwordDefault')];
-        if (home.checked) texts.push(Homey.__('settings.account.answering', { answering: home.answering, total: home.total }));
+        // Without a certain device to count (lib/account.js), no "X of Y answer".
+        if (home.checked && home.total > 0) texts.push(Homey.__('settings.account.answering', { answering: home.answering, total: home.total }));
         if (home.quiet.length) texts.push(Homey.__('settings.account.quiet', { devices: home.quiet.map(shownDevice).join(', ') }));
         if (home.unknown && home.unknown.length) texts.push(Homey.__('settings.account.unknown', { devices: home.unknown.map(shownDevice).join(', ') }));
         if (home.sg3) texts.push(Homey.__('settings.account.sg3', { count: home.sg3 }));
