@@ -392,14 +392,19 @@ test('the settings page sends the e-mail and password with Homey.api, never Home
 
 test('the texts: the SG password is not stored, the passphrase hint and the store texts name the login, the guide too when no account is fetched', () => {
   const [en, no] = ['en', 'no'].map((language) => JSON.parse(read(`locales/${language}.json`)));
-  assert.match(en.settings.account.intro, /Your SG password is not stored\./);
-  assert.match(no.settings.account.intro, /SG-passordet ditt lagres ikke\./);
+  assert.equal(en.settings.account.intro, 'Optional. Log in with your SG account to get the network password and device names from the SG app. Your SG password is not saved.');
+  assert.equal(no.settings.account.intro, 'Valgfritt. Logg inn med SG-kontoen for å hente nettverkspassordet og enhetsnavnene fra SG-appen. SG-passordet ditt lagres ikke.');
   const hint = JSON.parse(read('.homeycompose/drivers/settings/network.json')).children.find((s) => s.id === 'passphrase').hint;
-  assert.match(hint.en, /Or log in with your SG account in the app's settings: the app then fetches the password, and uses it while this field is 1234\.$/);
-  assert.match(hint.no, /Eller logg inn med SG-kontoen i appens innstillinger: da henter appen passordet og bruker det så lenge dette feltet er 1234\.$/);
-  assert.match(read('README.txt'), /log in with your SG account in the app's settings: the app then fetches the password and the list of devices and keeps only those, not your SG password\./);
-  assert.match(read('README.no.txt'), /logge inn med SG-kontoen i appens innstillinger: da henter appen passordet og lista over enheter og lagrer bare dem, ikke SG-passordet ditt\./);
-  assert.match(en.pair.guide.passwordAccount, /log in with your SG account in the app's settings\.$/);
+  assert.match(hint.en, /Or keep 1234 and log in with your SG account in the app settings to fetch the password automatically\.$/);
+  assert.match(hint.no, /Eller la feltet stå på 1234 og logg inn med SG-kontoen i appens innstillinger, så henter appen passordet selv\.$/);
+  assert.match(read('README.txt'), /You can also log in with your SG account in the app settings\. The app then fetches the network password and the device names\. Your SG password is not stored\./);
+  assert.match(read('README.no.txt'), /Du kan også logge inn med SG-kontoen i appens innstillinger\. Da henter appen nettverkspassordet og navnene på enhetene\. SG-passordet ditt lagres ikke\./);
+  assert.equal(en.pair.guide.passwordAccount, 'If Homey cannot find the devices or they do not respond, log in with your SG account in the app settings.');
+  assert.equal(no.pair.guide.passwordAccount, 'Hvis Homey ikke finner enhetene eller de ikke svarer, logg inn med SG-kontoen i appens innstillinger.');
+  // "app settings", never "app's settings", in what the user reads.
+  for (const text of [read('locales/en.json'), JSON.stringify(hint), read('README.txt'), read('.homeychangelog.json'), read('settings/index.html')]) {
+    assert.doesNotMatch(text, /app's settings/);
+  }
   const guides = ['sg_mesh', 'sg_pill', 'sg_plug', 'sg_thermostat'].map((driver) => read(`drivers/${driver}/pair/guide.html`));
   for (const guide of guides) assert.equal(guide, guides[0], 'one guide for all four');
   assert.ok(guides[0].includes("Homey.emit('account')") && guides[0].includes("Homey.__('pair.guide.passwordAccount')"));
@@ -585,8 +590,8 @@ test('the page says when the account module is not in this build, and hides the 
   assert.ok(page.includes('<p id="account-unavailable" hidden data-i18n="settings.account.unavailable">'));
   assert.ok(page.includes("document.getElementById('account-login').hidden = !available;"));
   const [en, no] = ['en', 'no'].map((language) => JSON.parse(read(`locales/${language}.json`)));
-  assert.equal(en.settings.account.unavailable, 'Logging in with an SG account is not part of this build.');
-  assert.equal(no.settings.account.unavailable, 'Innlogging med SG-konto er ikke med i dette bygget.');
+  assert.equal(en.settings.account.unavailable, 'SG account login is not included in this build.');
+  assert.equal(no.settings.account.unavailable, 'Denne utgaven har ikke innlogging med SG-konto.');
 });
 
 test('lib/sky/ is not in git, its code goes in a build, its tests and README do not; the store texts say it is not open', () => {
