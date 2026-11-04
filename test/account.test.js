@@ -401,6 +401,13 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   assert.match(read('README.no.txt'), /Du kan også logge inn med SG-kontoen i appens innstillinger\. Da henter appen nettverkspassordet og navnene på enhetene\. SG-passordet ditt lagres ikke\./);
   assert.equal(en.pair.guide.passwordAccount, 'If Homey cannot find the devices or they do not respond, log in with your SG account in the app settings.');
   assert.equal(no.pair.guide.passwordAccount, 'Hvis Homey ikke finner enhetene eller de ikke svarer, logg inn med SG-kontoen i appens innstillinger.');
+  // A count after a colon, so the text reads right with one device and with more.
+  assert.equal(en.settings.account.home, 'Home __number__, devices: __devices__.');
+  assert.equal(no.settings.account.home, 'Hjem __number__, enheter: __devices__.');
+  assert.equal(en.settings.account.sg3, 'SG Smart 3.0 devices: __count__. Support in a later version.');
+  assert.equal(no.settings.account.sg3, 'SG Smart 3.0-enheter: __count__. Støttes i en senere versjon.');
+  assert.equal(en.settings.account.asking, 'Checking devices.');
+  assert.equal(no.settings.account.asking, 'Sjekker enhetene.');
   // "app settings", never "app's settings", in what the user reads.
   for (const text of [read('locales/en.json'), JSON.stringify(hint), read('README.txt'), read('.homeychangelog.json'), read('settings/index.html')]) {
     assert.doesNotMatch(text, /app's settings/);

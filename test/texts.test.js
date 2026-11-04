@@ -164,9 +164,7 @@ test('every text in both languages, the store texts and the 2.5.0, 2.6.0, 2.6.1 
   const changelogs = JSON.parse(read('.homeychangelog.json'));
   const texts = [...leaves(en), ...leaves(no), ['README.txt', read('README.txt')], ['README.no.txt', read('README.no.txt')],
     ...['2.5.0', '2.6.0', '2.6.1', '2.7.0'].flatMap((version) => [[`changelog ${version} en`, changelogs[version].en], [`changelog ${version} no`, changelogs[version].no]])];
-  // "Checking devices …" is Trond's text (2.7.0), the one ellipsis allowed.
-  const ellipsis = new Set(['settings.account.asking']);
-  for (const [name, text] of texts) assert.doesNotMatch(text, ellipsis.has(name) ? /[“”‘’«»–—]/ : /[“”‘’«»…–—]/, name);
+  for (const [name, text] of texts) assert.doesNotMatch(text, /[“”‘’«»…–—]/, name);
   assert.deepEqual(tokens(en.pair.found.notYet), ['__products__']);
   assert.deepEqual(tokens(en.settings.log.summary), ['__count__', '__from__', '__to__']);
 });
