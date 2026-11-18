@@ -512,9 +512,13 @@ test('thermostat: FF3C with 00, 01 or 02; FF05, FF3D, FF5C and FF5D are read; sh
   assert.equal(proto.thermostatRequestData({ meshId: THERMO_MT, location: LOC, what: 2 }).toString('hex'), '0102ff3c5a3c02');
   // On, heating, clock set; 21.5 °C; firmware 1.4; schedule on; no errors.
   assert.deepEqual(proto.parseThermostatStatus(Buffer.from([0x5a, 0x3c, 0xa1, 21, 5, 1, 4, 0x00, 0x00])), {
-    location: LOC, on: true, window: false, heating: true, childLock: false, clockSet: true,
+    location: LOC, on: true, window: false, sensor: null, heating: true, childLock: false, clockSet: true,
     setPoint: 21.5, firmware: '1.4', paused: false, schedule: true, errors: 0,
   });
+  // The sensor in state bits 3..4: 0 not given, 1 room, 2 floor, 3 room with
+  // floor limit; the other state bits stay as they are.
+  assert.deepEqual([0x00, 0x08, 0x10, 0x18].map((bits) => proto.parseThermostatStatus(Buffer.from([0x5a, 0x3c, 0xa1 | bits, 21, 5, 1, 4, 0x00, 0x00])))
+    .map((s) => [s.sensor, s.on, s.heating, s.clockSet]), [[null, true, true, true], ['room', true, true, true], ['floor', true, true, true], ['roomFloor', true, true, true]]);
   // Off with the clock set is not 0, but it is off. Window open, child lock,
   // paused, schedule off, an error flag.
   const off = proto.parseThermostatStatus(Buffer.from([0x5a, 0x3c, 0xc4, 5, 0, 1, 4, 0x81, 0x80]));

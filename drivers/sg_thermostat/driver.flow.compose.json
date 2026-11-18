@@ -19,6 +19,24 @@
       ]
     },
     {
+      "id": "measure_temperature.room_changed",
+      "title": {
+        "en": "The room temperature changed",
+        "no": "Romtemperaturen endret seg"
+      },
+      "tokens": [
+        {
+          "name": "measure_temperature.room",
+          "type": "number",
+          "title": {
+            "en": "Room temperature",
+            "no": "Romtemperatur"
+          },
+          "example": 21
+        }
+      ]
+    },
+    {
       "id": "sg_heat_preset_changed",
       "title": {
         "en": "The preset changed",

@@ -8,6 +8,7 @@
     "target_temperature",
     "measure_temperature",
     "measure_temperature.floor",
+    "measure_temperature.room",
     "onoff",
     "thermostat_mode",
     "sg_heat_preset",
@@ -31,6 +32,12 @@
       "title": {
         "en": "Floor temperature",
         "no": "Gulvtemperatur"
+      }
+    },
+    "measure_temperature.room": {
+      "title": {
+        "en": "Room temperature",
+        "no": "Romtemperatur"
       }
     },
     "thermostat_mode": {

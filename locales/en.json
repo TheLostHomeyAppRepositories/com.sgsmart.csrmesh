@@ -190,6 +190,16 @@
     "noHome": "The app doesn't know which home the thermostat belongs to, so it can't control it. Log in with your SG account in the SG LEDDim settings. If the thermostat isn't added to a home in the SG app, do that first.",
     "notInHome": "The thermostat is not in the home fetched from your SG account. Add it in the SG app, then press \"Fetch again\" in the SG LEDDim settings.",
     "notHeard": "No contact with the thermostat. Wrong password or out of range?",
+    "sensorRead": {
+      "floor": "Floor",
+      "room": "Room",
+      "roomFloor": "Room with floor limit",
+      "none": "Not reported"
+    },
+    "shownMissing": {
+      "floor": "No floor temperature available. Select another sensor under Displayed temperature.",
+      "room": "No room temperature available. Select another sensor under Displayed temperature."
+    },
     "fault": {
       "EEE": "The thermostat reports a fault (EEE).",
       "FFF": "Floor sensor fault (FFF). Check the floor sensor.",

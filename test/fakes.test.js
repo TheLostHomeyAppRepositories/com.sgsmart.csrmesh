@@ -576,7 +576,7 @@ test('a fake HeatReg Smart: listed by sg_thermostat, read, set from Homey, fault
   // not move with the timers).
   for (let i = 0; i < 30; i += 1) await runTimers(run.app.homey, 0, 800, 2000);
   assert.deepEqual([on.getCapabilityValue('target_temperature'), on.getCapabilityValue('measure_temperature'),
-    on.getCapabilityValue('measure_temperature.floor'), on.getCapabilityValue('sg_heat_preset')], [21, 20.5, 24, 'comfort']);
+    on.getCapabilityValue('measure_temperature.floor'), on.getCapabilityValue('sg_heat_preset')], [21, 24, 24, 'comfort']);
   // Both send, and the answer comes 2 s later.
   await old._setPoint(22.5);
   await on._setPoint(22.5);
@@ -591,6 +591,15 @@ test('a fake HeatReg Smart: listed by sg_thermostat, read, set from Homey, fault
   assert.equal(on.warning, 'thermostat.fault.FFF');
   assert.equal(on.getCapabilityValue('sg_window_open'), true);
   assert.equal(on.getCapabilityValue('measure_temperature.floor'), null, 'no floor reading with its sensor fault');
+  // The sensor it reports, ordered: the tile follows (the sensor Floor in
+  // the settings; Automatic), and the settings show what was read.
+  run.app.fakes.order('8123 error none');
+  run.app.fakes.order('8123 sensor room');
+  await runTimers(run.app.homey, 0);
+  assert.deepEqual([on.getCapabilityValue('measure_temperature'), on.getSettings().sensor_read], [20.5, 'thermostat.sensorRead.room']);
+  run.app.fakes.order('8123 sensor floor');
+  await runTimers(run.app.homey, 0);
+  assert.deepEqual([on.getCapabilityValue('measure_temperature'), on.getSettings().sensor_read], [24, 'thermostat.sensorRead.floor']);
   const heard = run.app.fakes.bridge.heard.map((m) => `${m.opcode.toString(16)} ${m.dst.toString(16)}`);
   assert.ok(heard.includes('ff3e 8123') && heard.includes('ff03 8123') && heard.includes('ff3c 7f07'));
   assert.ok(heard.includes('ff3e 7f07'), 'set on the one with the old setting false as well');

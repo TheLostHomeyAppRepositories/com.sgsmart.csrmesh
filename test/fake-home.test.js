@@ -14,7 +14,7 @@ const assert = require('node:assert/strict');
 
 const {
   csrLevelData, csrNameRequestData, csrStatusRequestData, opcodeValue, OP_EXT_NAME, OP_EXT_STATUS, parseCsrName, parseExt,
-  thermostatRequestData, THERMOSTAT_ASK_TEMPERATURES,
+  parseThermostatStatus, thermostatRequestData, THERMOSTAT_ASK_TEMPERATURES,
 } = require('../lib/sgProtocol');
 const { FakeLight, FakeThermostat } = require('../lib/fake/nodes');
 
@@ -81,6 +81,24 @@ test('a device takes FF04 and FF03 only with its location id, and only to its me
   const heat = thermostat();
   assert.deepEqual(answers(heat, thermostatRequestData({ meshId: THERMOSTAT_ID, location: 0, what: THERMOSTAT_ASK_TEMPERATURES })), []);
   assert.equal(answers(heat, thermostatRequestData({ meshId: THERMOSTAT_ID, location: HOME, what: THERMOSTAT_ASK_TEMPERATURES })).length, 1);
+});
+
+test('a fake thermostat reports no sensor until ordered, then the one ordered in FF05 state bits 3..4, '
+  + 'the other state bits as they were', () => {
+  const node = thermostat();
+  const reported = () => {
+    const [message] = node.order('on');
+    return parseThermostatStatus(message.data);
+  };
+  assert.equal(reported().sensor, null);
+  for (const [order, sensor] of [['room', 'room'], ['floor', 'floor'], ['roomFloor', 'roomFloor'], ['none', null]]) {
+    const messages = node.order('sensor', order);
+    assert.deepEqual(messages.map((m) => m.opcode), [STATUS], order);
+    const parsed = parseThermostatStatus(messages[0].data);
+    assert.deepEqual([parsed.sensor, parsed.on, parsed.clockSet], [sensor, true, true], order);
+  }
+  assert.equal(node.order('sensor', 'wall'), null, 'not an order it knows');
+  assert.equal(reported().sensor, null);
 });
 
 test('a device\'s name is its prefix and the last four characters of its Bluetooth address, not its mesh id', () => {
