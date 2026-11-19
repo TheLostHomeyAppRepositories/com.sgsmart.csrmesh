@@ -97,42 +97,32 @@ test('sg_thermostat adds HeatReg Smart (@MT, @ST) as a thermostat, with what oth
   }
 });
 
-test('the settings: the sensor read from the thermostat, the sensor Floor as fallback and no cable power by default, and no "Control from Homey"', () => {
+test('the settings: "Sensor" with Automatic first and by default, "Displayed temperature", and the heating cable\'s power, '
+  + 'none by default; no "Control from Homey", and no setting that shows the sensor read', () => {
   const [network, group] = JSON.parse(read('drivers/sg_thermostat/driver.settings.compose.json'));
   assert.deepEqual(network, { $extends: 'network' });
   const byId = Object.fromEntries(group.children.map((s) => [s.id, s]));
-  assert.deepEqual(Object.keys(byId), ['sensor_read', 'use_reported_sensor', 'sensor', 'shown_temperature', 'heating_cable_power']);
-  assert.deepEqual([byId.use_reported_sensor.type, byId.use_reported_sensor.value], ['checkbox', true]);
-  assert.deepEqual(byId.use_reported_sensor.label, { en: 'Use the sensor reported by the thermostat', no: 'Bruk føleren termostaten melder' });
-  assert.deepEqual(byId.use_reported_sensor.hint, {
-    en: 'When disabled, the setting below is used as before. The sensor reported by the thermostat is still shown above.',
-    no: 'Når denne er av, brukes innstillingen under som før. Føleren termostaten melder, vises fortsatt over.',
-  });
-  assert.deepEqual([byId.sensor_read.type, byId.sensor_read.value], ['label', '-']);
-  assert.deepEqual(byId.sensor_read.label, { en: 'Sensor reported by the thermostat', no: 'Føler termostaten melder' });
-  assert.deepEqual(byId.sensor_read.hint, {
-    en: 'The sensor reported by the thermostat. Used for faults, the floor limit and Automatic under Displayed temperature when the checkbox below is enabled. If no sensor is reported, the setting below is used.',
-    no: 'Føleren termostaten selv melder. Brukes ved feil, for gulvgrense og for Automatisk under Vist temperatur når avkrysningen under er på. Hvis føleren ikke er meldt, brukes innstillingen under.',
-  });
-  for (const [lang, values] of [['en', ['Floor', 'Room', 'Room with floor limit', 'Not reported']], ['no', ['Gulv', 'Rom', 'Rom med gulvgrense', 'Ikke meldt']]]) {
-    const { sensorRead } = JSON.parse(read(`locales/${lang}.json`)).thermostat;
-    assert.deepEqual([sensorRead.floor, sensorRead.room, sensorRead.roomFloor, sensorRead.none], values, lang);
-  }
-  assert.deepEqual([byId.sensor.value, byId.sensor.values.map((v) => v.id)], ['floor', ['floor', 'room', 'roomFloor']]);
-  assert.deepEqual(byId.sensor.label, { en: 'Sensor used by the thermostat', no: 'Føler termostaten bruker' });
+  assert.deepEqual(Object.keys(byId), ['sensor', 'shown_temperature', 'heating_cable_power']);
+  assert.deepEqual(driverManifest().settings[1].children.map((s) => s.id), ['sensor', 'shown_temperature', 'heating_cable_power'], 'app.json the same');
+  assert.deepEqual([byId.sensor.type, byId.sensor.value, byId.sensor.values.map((v) => v.id)],
+    ['dropdown', 'auto', ['auto', 'floor', 'room', 'roomFloor']]);
+  assert.deepEqual(byId.sensor.label, { en: 'Sensor', no: 'Føler' });
   assert.deepEqual(byId.sensor.values.map((v) => v.label), [
-    { en: 'Floor', no: 'Gulv' }, { en: 'Room', no: 'Rom' }, { en: 'Room with floor limit', no: 'Rom med gulvgrense' }]);
+    { en: 'Automatic', no: 'Automatisk' }, { en: 'Floor', no: 'Gulv' }, { en: 'Room', no: 'Rom' },
+    { en: 'Room with floor limit', no: 'Rom med gulvgrense' }]);
   assert.deepEqual(byId.sensor.hint, {
-    en: 'Select the sensor the thermostat is set to use. Used when the thermostat does not report its sensor, or when the checkbox above is disabled. Homey does not change the thermostat.',
-    no: 'Velg føleren termostaten er satt til. Brukes når termostaten ikke melder føleren selv, eller når avkrysningen over er av. Homey endrer ikke termostaten.',
+    en: 'Automatic uses the sensor reported by the thermostat. Select a sensor manually if this is incorrect. Homey does not change the thermostat settings.',
+    no: 'Automatisk bruker føleren termostaten oppgir. Velg føler selv hvis dette er feil. Homey endrer ikke innstillingene på termostaten.',
   });
+  for (const lang of ['en', 'no']) assert.equal(JSON.parse(read(`locales/${lang}.json`)).thermostat.sensorRead, undefined, lang);
   assert.deepEqual([byId.heating_cable_power.value, byId.heating_cable_power.min, byId.heating_cable_power.max], [0, 0, 5000]);
-  assert.deepEqual(byId.heating_cable_power.label, { en: 'Heating cable power (W)', no: 'Varmekabelens effekt (W)' });
+  assert.deepEqual(byId.heating_cable_power.label, { en: 'Heating cable power', no: 'Varmekabelens effekt' });
   assert.deepEqual(byId.heating_cable_power.units, { en: 'W', no: 'W' });
   assert.deepEqual(byId.heating_cable_power.hint, {
     en: 'Enter the power from the cable label or installation papers. Homey shows it while the thermostat heats, but does not measure it. At 0, no power is shown.',
     no: 'Skriv effekten fra kabelmerket eller installasjonspapirene. Homey viser den mens termostaten varmer, men måler den ikke. Ved 0 vises ingen effekt.',
   });
+  for (const text of [byId.sensor.hint.en, byId.sensor.hint.no]) assert.doesNotMatch(text, /[«»“”–—]/);
 });
 
 test('pairing: a thermostat with a mesh id is listed with the driver\'s capabilities; none found says where the others go', async () => {
@@ -165,8 +155,8 @@ test('the setting "Displayed temperature": Automatic by default, then the floor 
   assert.deepEqual(card.title, { en: 'The room temperature changed', no: 'Romtemperaturen endret seg' });
   assert.deepEqual(card.tokens.map((t) => [t.name, t.type]), [['measure_temperature.room', 'number']]);
   assert.deepEqual(setting.hint, {
-    en: 'Choose which temperature Homey displays. Automatic shows the floor temperature when the thermostat uses the floor sensor, otherwise the room temperature. The other temperature is shown as a separate measurement. If the thermostat only uses the room sensor, the floor temperature is not shown.',
-    no: 'Velg hvilken temperatur Homey skal vise. Automatisk viser gulvtemperaturen når termostaten bruker gulvføleren, ellers romtemperaturen. Den andre temperaturen vises som egen måling. Bruker termostaten bare romføleren, vises ikke gulvtemperaturen.',
+    en: 'Choose which temperature Homey displays. Automatic follows the sensor used by the thermostat.',
+    no: 'Velg hvilken temperatur Homey skal vise. Automatisk følger føleren termostaten bruker.',
   });
   assert.deepEqual(JSON.parse(read('locales/en.json')).thermostat.shownMissing, {
     floor: 'No floor temperature available. Select another sensor under Displayed temperature.',
@@ -241,9 +231,14 @@ async function thermostat({
   };
   const homey = fake.fakeHomey(app);
   const device = new SGThermostatDevice({
-    homey, store: { meshId: MESH_ID, prefix: '@MT', kind: 'thermostat', locationId: LOC, ...store },
+    homey,
+    // Past the change of "Sensor" Floor to Automatic at start, so a sensor
+    // given here counts as chosen.
+    store: {
+      meshId: MESH_ID, prefix: '@MT', kind: 'thermostat', locationId: LOC, sensorAutoOnce: true, ...store,
+    },
     settings: {
-      passphrase: 'test-only-pass', sensor: 'floor', use_reported_sensor: true, shown_temperature: 'auto', heating_cable_power: 0, ...settings,
+      passphrase: 'test-only-pass', sensor: 'auto', shown_temperature: 'auto', heating_cable_power: 0, ...settings,
     },
     data: { id: '@MT1A2B' }, name: 'thermostat',
   });
@@ -532,107 +527,102 @@ test('the shown sensor has no temperature: a fault of the sensor the thermostat 
   assert.ok(device.logs.includes('shown temperature read again'));
 });
 
-test('the sensor from the status: 0 leaves the setting as today, 1, 2 and 3 count over the setting '
-  + 'for the temperatures, the faults and the floor limit', async () => {
-  const run = async (read, settings, errors = 0) => {
-    const { device } = await thermostat({ settings });
-    device.applyThermostat('FF05', status({ sensor: read, errors }));
-    device.applyThermostat('FF3D', { location: LOC, room: 19.4, floor: 26.6, floorLimit: 28 });
-    await settled();
-    return {
-      temps: temps(device), problem: value(device, 'alarm_problem'), limit: value(device, 'sg_floor_limit'), warning: device.warning, device,
-    };
+// A status with this sensor (null for none) and these faults, then the
+// bathroom's temperatures: the room at 19.4 and the floor at 26.6.
+async function withSensor(read, settings, errors = 0) {
+  const { device } = await thermostat({ settings });
+  device.applyThermostat('FF05', status({ sensor: read, errors }));
+  device.applyThermostat('FF3D', { location: LOC, room: 19.4, floor: 26.6, floorLimit: 28 });
+  await settled();
+  return {
+    temps: temps(device), problem: value(device, 'alarm_problem'), limit: value(device, 'sg_floor_limit'), warning: device.warning, device,
   };
-  // 0: not given, the setting is used as today.
-  assert.deepEqual((await run(null, { sensor: 'floor' })).temps, [26.6, 26.6, 19.4]);
-  assert.deepEqual((await run(null, { sensor: 'room' })).temps, [19.4, null, 19.4]);
-  assert.deepEqual((await run(null, { sensor: 'room' }, 0x04)).problem, false, 'FFF is no fault with Room');
-  // 1, room, over the setting Floor: the room shown, never the floor; E2 a
-  // problem, FFF none; no floor limit.
-  const room = await run('room', { sensor: 'floor' }, 0x80);
+}
+
+test('"Sensor" Automatic: the sensor the status gives counts for the temperatures, the faults and the floor limit; '
+  + 'with none given, Floor', async () => {
+  const auto = { sensor: 'auto' };
+  // None given: Floor, with FFF a problem.
+  assert.deepEqual((await withSensor(null, auto)).temps, [26.6, 26.6, 19.4]);
+  assert.equal((await withSensor(null, auto, 0x04)).problem, true);
+  // Room: the room shown, never the floor; E2 a problem, FFF none; no floor limit.
+  const room = await withSensor('room', auto, 0x80);
   assert.deepEqual([room.temps, room.limit], [[19.4, null, 19.4], false]);
-  assert.equal((await run('room', { sensor: 'floor' }, 0x20)).warning, 'thermostat.fault.E2');
-  assert.equal((await run('room', { sensor: 'floor' }, 0x20)).problem, true);
-  assert.equal((await run('room', { sensor: 'floor' }, 0x04)).problem, false);
-  // 2, floor, over the setting Room: the floor shown; FFF a problem.
-  assert.deepEqual((await run('floor', { sensor: 'room' })).temps, [26.6, 26.6, 19.4]);
-  const fff = await run('floor', { sensor: 'room' }, 0x04);
+  const e2 = await withSensor('room', auto, 0x20);
+  assert.deepEqual([e2.warning, e2.problem], ['thermostat.fault.E2', true]);
+  assert.equal((await withSensor('room', auto, 0x04)).problem, false);
+  // Floor: the floor shown; FFF a problem.
+  assert.deepEqual((await withSensor('floor', auto)).temps, [26.6, 26.6, 19.4]);
+  const fff = await withSensor('floor', auto, 0x04);
   assert.deepEqual([fff.temps[0], fff.problem, fff.warning], [null, true, 'thermostat.fault.FFF']);
-  // 3, room with floor limit, over the setting Floor: the room shown, the
-  // floor on its own, and the floor limit.
-  const limited = await run('roomFloor', { sensor: 'floor' }, 0x80);
+  // Room with floor limit: the room shown, the floor on its own, and the floor limit.
+  const limited = await withSensor('roomFloor', auto, 0x80);
   assert.deepEqual([limited.temps, limited.limit], [[19.4, 26.6, 19.4], true]);
-  // Shown in the settings, for each.
-  for (const [read, key] of [[null, 'none'], ['room', 'room'], ['floor', 'floor'], ['roomFloor', 'roomFloor']]) {
-    assert.equal((await run(read, { sensor: 'floor' })).device.getSettings().sensor_read, `thermostat.sensorRead.${key}`, String(read));
-  }
+  // With Automatic nothing is logged as a difference.
+  assert.ok(!limited.device.logs.some((line) => line.includes('the setting says')));
 });
 
-test('the sensor from the status changes on the way: shown again at once, logged at the first status, at each change '
-  + 'and when it differs from the setting, not at each status', async () => {
-  const { device } = await thermostat({ settings: { sensor: 'floor' } });
+test('a sensor chosen under "Sensor" (Floor, Room, Room with floor limit) counts whatever the status gives; '
+  + 'the difference is logged, with the one that counts', async () => {
+  // Floor chosen, the status says Room: the floor; FFF a problem, E2 none.
+  assert.deepEqual((await withSensor('room', { sensor: 'floor' })).temps, [26.6, 26.6, 19.4]);
+  const floor = await withSensor('room', { sensor: 'floor' }, 0x04);
+  assert.deepEqual([floor.temps, floor.problem, floor.warning], [[null, null, 19.4], true, 'thermostat.fault.FFF']);
+  assert.equal((await withSensor('room', { sensor: 'floor' }, 0x20)).problem, false);
+  assert.ok(floor.device.logs.includes('sensor from the status: room, the setting says floor: the setting counts'));
+  // Room chosen, the status says Floor: the room, never the floor; no floor limit; FFF none.
+  const room = await withSensor('floor', { sensor: 'room' }, 0x80);
+  assert.deepEqual([room.temps, room.limit], [[19.4, null, 19.4], false]);
+  assert.equal((await withSensor('floor', { sensor: 'room' }, 0x04)).problem, false);
+  assert.ok(room.device.logs.includes('sensor from the status: floor, the setting says room: the setting counts'));
+  // Room with floor limit chosen, the status says Room: the room, the floor on its own, the floor limit.
+  const limited = await withSensor('room', { sensor: 'roomFloor' }, 0x80);
+  assert.deepEqual([limited.temps, limited.limit], [[19.4, 26.6, 19.4], true]);
+  assert.ok(limited.device.logs.includes('sensor from the status: room, the setting says roomFloor: the setting counts'));
+  // The same as the one chosen, or none given: no difference logged.
+  for (const read of ['floor', null]) {
+    const same = await withSensor(read, { sensor: 'floor' });
+    assert.ok(!same.device.logs.some((line) => line.includes('the setting says')), String(read));
+  }
+  assert.ok((await withSensor(null, { sensor: 'room' })).device.logs.includes('sensor not given in the status: the setting is used (room)'));
+});
+
+test('the sensor from the status changes on the way: with Automatic shown again at once, logged at the first status and at each '
+  + 'change, not at each status; "Sensor" changed in the settings counts at once, and a difference is logged', async () => {
+  const { device } = await thermostat();
   const at = (read) => {
     device.applyThermostat('FF05', status({ sensor: read }));
-    return [temps(device), device.getSettings().sensor_read];
+    return temps(device);
   };
   device.applyThermostat('FF3D', { location: LOC, room: 19.4, floor: 26.6, floorLimit: 28 });
-  assert.deepEqual(at('floor'), [[26.6, 26.6, 19.4], 'thermostat.sensorRead.floor']);
-  assert.deepEqual(at('floor'), [[26.6, 26.6, 19.4], 'thermostat.sensorRead.floor']);
-  assert.deepEqual(at('room'), [[19.4, null, 19.4], 'thermostat.sensorRead.room']);
-  assert.deepEqual(at('room'), [[19.4, null, 19.4], 'thermostat.sensorRead.room']);
-  assert.deepEqual(at('roomFloor'), [[19.4, 26.6, 19.4], 'thermostat.sensorRead.roomFloor']);
-  assert.deepEqual(at(null), [[26.6, 26.6, 19.4], 'thermostat.sensorRead.none'], 'not given: the setting Floor again');
+  assert.deepEqual(at('floor'), [26.6, 26.6, 19.4]);
+  assert.deepEqual(at('floor'), [26.6, 26.6, 19.4]);
+  assert.deepEqual(at('room'), [19.4, null, 19.4]);
+  assert.deepEqual(at('room'), [19.4, null, 19.4]);
+  assert.deepEqual(at('roomFloor'), [19.4, 26.6, 19.4]);
+  assert.deepEqual(at(null), [26.6, 26.6, 19.4], 'none given: Floor');
   const lines = device.logs.filter((line) => line.startsWith('sensor '));
   assert.deepEqual(lines, [
     'sensor from the status: floor',
     'sensor from the status: room (was floor)',
-    'sensor from the status: room, the setting says floor: the status counts',
     'sensor from the status: roomFloor (was room)',
-    'sensor from the status: roomFloor, the setting says floor: the status counts',
-    'sensor not given in the status: the setting is used (floor) (was roomFloor)',
+    'sensor not given in the status: floor is used (auto) (was roomFloor)',
   ]);
-  // The setting changed while the status gives one: the difference is
-  // logged as it is now; the status still counts.
+  // Chosen while the status says Room: Floor, then Room with floor limit,
+  // each at once and logged; Automatic again: the status.
   at('room');
-  await device.onSettings({ newSettings: { ...device.getSettings(), sensor: 'room' }, changedKeys: ['sensor'] });
-  await device.onSettings({ newSettings: { ...device.getSettings(), sensor: 'roomFloor' }, changedKeys: ['sensor'] });
+  const choose = (sensor) => device.onSettings({ newSettings: { ...device.getSettings(), sensor }, changedKeys: ['sensor'] });
+  await choose('floor');
+  assert.deepEqual(temps(device), [26.6, 26.6, 19.4]);
+  await choose('roomFloor');
+  assert.deepEqual(temps(device), [19.4, 26.6, 19.4]);
+  await choose('auto');
   assert.deepEqual(temps(device), [19.4, null, 19.4]);
   assert.deepEqual(device.logs.filter((line) => line.startsWith('sensor ')).slice(lines.length), [
     'sensor from the status: room (was not given)',
-    'sensor from the status: room, the setting says floor: the status counts',
-    'sensor from the status: room, the setting says roomFloor: the status counts',
+    'sensor from the status: room, the setting says floor: the setting counts',
+    'sensor from the status: room, the setting says roomFloor: the setting counts',
   ]);
-});
-
-test('"Use the sensor reported by the thermostat" off: the setting applies as today, and what was read is still shown and logged; '
-  + 'turned on and off on the way, it counts at once', async () => {
-  const { device } = await thermostat({ settings: { sensor: 'floor', use_reported_sensor: false } });
-  device.applyThermostat('FF05', status({ sensor: 'room', errors: 0x04 }));
-  device.applyThermostat('FF3D', { location: LOC, room: 19.4, floor: 26.6, floorLimit: 28 });
-  await settled();
-  // The setting Floor: FFF is a fault, the floor empty; the room on its own.
-  assert.deepEqual([temps(device), value(device, 'alarm_problem'), device.warning],
-    [[null, null, 19.4], true, 'thermostat.fault.FFF']);
-  assert.equal(device.getSettings().sensor_read, 'thermostat.sensorRead.room');
-  assert.ok(device.logs.includes('sensor from the status: room'));
-  assert.ok(device.logs.includes('sensor from the status: room, the setting says floor: the setting counts'));
-  // On: the status counts, the room shown, FFF no fault.
-  await device.onSettings({ newSettings: { ...device.getSettings(), use_reported_sensor: true }, changedKeys: ['use_reported_sensor'] });
-  await settled();
-  assert.deepEqual([temps(device), value(device, 'alarm_problem'), device.warning], [[19.4, null, 19.4], false, null]);
-  assert.ok(device.logs.includes('sensor from the status: room, the setting says floor: the status counts'));
-  // Off again: as the setting.
-  await device.onSettings({ newSettings: { ...device.getSettings(), use_reported_sensor: false }, changedKeys: ['use_reported_sensor'] });
-  assert.deepEqual(temps(device), [null, null, 19.4]);
-});
-
-test('at start: "Use the sensor reported by the thermostat" on when it has no value, a value it has kept', async () => {
-  const { device } = await thermostat({ settings: { use_reported_sensor: undefined } });
-  assert.equal(device.getSettings().use_reported_sensor, true);
-  assert.ok(device.logs.includes('settings at start: use_reported_sensor=true'));
-  const off = await thermostat({ settings: { use_reported_sensor: false } });
-  assert.equal(off.device.getSettings().use_reported_sensor, false);
-  assert.ok(!off.device.logs.some((line) => line.startsWith('settings at start')));
 });
 
 test('"Displayed temperature" changed in the settings: shown again at once, and the warning with it', async () => {
@@ -694,10 +684,12 @@ test('measure_temperature.room whose title was not set: logged, and the title se
 // (added at start), with the values Homey kept: the room (21) as the main
 // temperature, and the floor (27).
 const KEPT_BEFORE = { measure_temperature: 21, 'measure_temperature.floor': 27 };
+// Its "Sensor" Floor, the default then, and no mark: set to Automatic at start.
 const updated = (settings = {}, values = KEPT_BEFORE) => thermostat({
   capabilities: new Set(['target_temperature', 'measure_temperature', 'measure_temperature.floor', 'onoff', 'measure_power', 'alarm_problem']),
   values,
-  settings,
+  settings: { sensor: 'floor', ...settings },
+  store: { sensorAutoOnce: undefined },
 });
 const mainsAfter = (device, statuses) => statuses.map((fields) => {
   device.applyThermostat('FF05', status(fields));
@@ -709,6 +701,7 @@ test('after an update from an earlier version, before the first FF3D: the main t
   // The sensor Floor and Automatic, no sensor in the status: the floor.
   const { device } = await updated();
   assert.ok(device.logs.includes('measure_temperature.room added'));
+  assert.equal(device.getSettings().sensor, 'auto');
   assert.deepEqual([value(device, 'measure_temperature'), value(device, 'measure_temperature.floor')], [21, 27], 'nothing at start');
   device.applyThermostat('FF05', status());
   await settled();
@@ -732,9 +725,10 @@ test('after an update from an earlier version, before the first FF3D: the main t
   assert.deepEqual(mainsAfter(chosen, [{ sensor: 'room' }, { sensor: 'floor' }]), [null, 27]);
   const { device: room } = await updated({ shown_temperature: 'room' });
   assert.deepEqual(mainsAfter(room, [{ sensor: 'floor' }]), [21]);
-  // The status says Floor, the setting Room: the status decides.
+  // Room kept from the earlier version counts whatever the status says:
+  // the room, here the main temperature kept.
   const { device: reported } = await updated({ sensor: 'room' });
-  assert.deepEqual(mainsAfter(reported, [{ sensor: 'floor' }]), [27]);
+  assert.deepEqual(mainsAfter(reported, [{ sensor: 'floor' }]), [21]);
   // The room not added (a failure, logged): the main temperature kept as well.
   const refusing = new (class extends Set {
     add(id) {
@@ -804,46 +798,6 @@ test('a status while the start still waits: the main temperature from the values
   assert.ok(device.logs.includes('measure_temperature.room added'));
   // The room was not there at this start: with the room shown, the main temperature kept.
   assert.deepEqual(mainsAfter(device, [{ sensor: 'room' }]), [21]);
-});
-
-test('the sensor read not saved in the settings: logged, and tried again at the next status with the same sensor; '
-  + 'once saved, or while it is being saved, it is not saved again', async () => {
-  const { device } = await thermostat();
-  const save = device.setSettings.bind(device);
-  const saves = [];
-  let refuse = 'busy';
-  let hold = null;
-  device.setSettings = async (changes) => {
-    saves.push(changes);
-    if (refuse) throw new Error(refuse);
-    if (hold) await hold;
-    return save(changes);
-  };
-  device.applyThermostat('FF05', status({ sensor: 'room' }));
-  await settled();
-  assert.notEqual(device.getSettings().sensor_read, 'thermostat.sensorRead.room');
-  assert.ok(device.errors.includes('sensor_read not shown: busy'));
-  // The same sensor again: tried again, and saved.
-  refuse = null;
-  device.applyThermostat('FF05', status({ sensor: 'room' }));
-  await settled();
-  assert.equal(device.getSettings().sensor_read, 'thermostat.sensorRead.room');
-  assert.equal(saves.length, 2);
-  // Saved: the next status saves nothing; logged once, at the first status.
-  device.applyThermostat('FF05', status({ sensor: 'room' }));
-  await settled();
-  assert.equal(saves.length, 2);
-  assert.equal(device.logs.filter((line) => line === 'sensor from the status: room').length, 1);
-  // Two statuses while the save of the first waits: saved once.
-  let release;
-  hold = new Promise((resolve) => { release = resolve; });
-  device.applyThermostat('FF05', status({ sensor: 'floor' }));
-  device.applyThermostat('FF05', status({ sensor: 'floor' }));
-  assert.equal(saves.length, 3);
-  release();
-  await settled();
-  await settled();
-  assert.equal(device.getSettings().sensor_read, 'thermostat.sensorRead.floor');
 });
 
 test('faults: which count follows the sensor setting; a problem alarm and a warning, L0 a warning only; the floor limit on its own', async () => {
@@ -1402,11 +1356,11 @@ test('the on/off quick action on the tile for every thermostat: uiQuickAction fa
 
 // ---- settings at start, refused changes shown again
 
-test('settings at start: the sensor Floor when it has no valid value; the old setting and flag are left as they are', async () => {
+test('settings at start: "Sensor" Automatic when it has no valid value; the old setting and flag are left as they are', async () => {
   for (const sensor of [undefined, null, '', 'xyz']) {
     const { device } = await thermostat({ settings: { sensor } });
-    assert.equal(device._settings.sensor, 'floor', String(sensor));
-    assert.ok(device.logs.includes('settings at start: sensor=floor'), String(sensor));
+    assert.equal(device._settings.sensor, 'auto', String(sensor));
+    assert.ok(device.logs.includes('settings at start: sensor=auto'), String(sensor));
   }
   const room = await thermostat({ settings: { sensor: 'room' } });
   assert.equal(room.device._settings.sensor, 'room');
@@ -1428,9 +1382,41 @@ test('settings at start: the sensor Floor when it has no valid value; the old se
   failing.setSettings = async () => { throw new Error('busy'); };
   await failing.onInit();
   assert.ok(failing.errors.includes('settings at start not saved: busy'));
-  // An empty sensor counts as Floor in the faults as well.
+  // An empty sensor counts as Automatic, which is Floor with none given,
+  // and as Floor in the faults as well.
   assert.deepEqual(faultsOf(0x04, { room: 21, floor: 24 }, ''), ['FFF']);
   assert.equal(room.device._sensor({ sensor: '' }), 'floor');
+});
+
+test('a thermostat added before: "Sensor" Floor, the default then, set to Automatic once, with the mark in its store; '
+  + 'Room and Room with floor limit kept; Floor chosen after that stays', async () => {
+  const before = (sensor, more = {}) => thermostat({ settings: { sensor }, store: { sensorAutoOnce: undefined }, ...more });
+  const { device } = await before('floor');
+  assert.deepEqual([device._settings.sensor, device.getStoreValue('sensorAutoOnce')], ['auto', true]);
+  assert.ok(device.logs.includes('settings at start: sensor=auto (sensor floor, the default of an earlier version: once)'));
+  for (const sensor of ['room', 'roomFloor']) {
+    const kept = await before(sensor);
+    assert.deepEqual([kept.device._settings.sensor, kept.device.getStoreValue('sensorAutoOnce')], [sensor, true], sensor);
+    assert.ok(!kept.device.logs.some((line) => line.startsWith('settings at start')), sensor);
+  }
+  // Floor chosen after that, and a start again: it stays.
+  device._settings.sensor = 'floor';
+  const restarted = await thermostat({ settings: { ...device._settings }, store: { ...device._store } });
+  assert.equal(restarted.device._settings.sensor, 'floor');
+  assert.ok(!restarted.device.logs.some((line) => line.startsWith('settings at start')));
+  // Added with this version: Automatic already, so only the mark.
+  const added = await before('auto');
+  assert.deepEqual([added.device._settings.sensor, added.device.getStoreValue('sensorAutoOnce')], ['auto', true]);
+  assert.ok(!added.device.logs.some((line) => line.startsWith('settings at start')));
+  // The settings not saved: no mark, and tried again at the next start.
+  const refused = await before('floor', { beforeInit: (made) => { made.setSettings = async () => { throw new Error('busy'); }; } });
+  assert.deepEqual([refused.device._settings.sensor, refused.device.getStoreValue('sensorAutoOnce')], ['floor', undefined]);
+  assert.ok(refused.device.errors.includes('settings at start not saved: busy'));
+  const next = await thermostat({ settings: { ...refused.device._settings }, store: { ...refused.device._store } });
+  assert.deepEqual([next.device._settings.sensor, next.device.getStoreValue('sensorAutoOnce')], ['auto', true]);
+  // The mark not stored: logged.
+  const unmarked = await before('room', { beforeInit: (made) => { made.setStoreValue = async () => { throw new Error('full'); }; } });
+  assert.ok(unmarked.device.errors.includes('sensorAutoOnce not stored: full'));
 });
 
 // The driver as Homey gives it to the device (its entry in app.json).

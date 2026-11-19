@@ -190,12 +190,6 @@
     "noHome": "Appen vet ikke hvilket hjem termostaten tilhører, og kan derfor ikke styre den. Logg inn med SG-kontoen i innstillingene til SG LEDDim. Er termostaten ikke lagt til i et hjem i SG-appen, gjør det først.",
     "notInHome": "Termostaten er ikke i hjemmet som er hentet fra SG-kontoen. Legg den til i SG-appen, og trykk \"Hent på nytt\" i innstillingene til SG LEDDim.",
     "notHeard": "Ingen kontakt med termostaten. Feil passord eller utenfor rekkevidde?",
-    "sensorRead": {
-      "floor": "Gulv",
-      "room": "Rom",
-      "roomFloor": "Rom med gulvgrense",
-      "none": "Ikke meldt"
-    },
     "shownMissing": {
       "floor": "Ingen gulvtemperatur tilgjengelig. Velg en annen føler under Vist temperatur.",
       "room": "Ingen romtemperatur tilgjengelig. Velg en annen føler under Vist temperatur."

@@ -591,15 +591,16 @@ test('a fake HeatReg Smart: listed by sg_thermostat, read, set from Homey, fault
   assert.equal(on.warning, 'thermostat.fault.FFF');
   assert.equal(on.getCapabilityValue('sg_window_open'), true);
   assert.equal(on.getCapabilityValue('measure_temperature.floor'), null, 'no floor reading with its sensor fault');
-  // The sensor it reports, ordered: the tile follows (the sensor Floor in
-  // the settings; Automatic), and the settings show what was read.
+  // The sensor it reports, ordered: the tile follows ("Sensor" and
+  // "Displayed temperature" Automatic).
+  assert.equal(on.getSettings().sensor, 'auto');
   run.app.fakes.order('8123 error none');
   run.app.fakes.order('8123 sensor room');
   await runTimers(run.app.homey, 0);
-  assert.deepEqual([on.getCapabilityValue('measure_temperature'), on.getSettings().sensor_read], [20.5, 'thermostat.sensorRead.room']);
+  assert.equal(on.getCapabilityValue('measure_temperature'), 20.5);
   run.app.fakes.order('8123 sensor floor');
   await runTimers(run.app.homey, 0);
-  assert.deepEqual([on.getCapabilityValue('measure_temperature'), on.getSettings().sensor_read], [24, 'thermostat.sensorRead.floor']);
+  assert.equal(on.getCapabilityValue('measure_temperature'), 24);
   const heard = run.app.fakes.bridge.heard.map((m) => `${m.opcode.toString(16)} ${m.dst.toString(16)}`);
   assert.ok(heard.includes('ff3e 8123') && heard.includes('ff03 8123') && heard.includes('ff3c 7f07'));
   assert.ok(heard.includes('ff3e 7f07'), 'set on the one with the old setting false as well');
