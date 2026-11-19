@@ -217,9 +217,10 @@ test('the Flow cards: in the manifest with both languages, and the driver answer
 // has them all. With options (an object), its capability options are read
 // from and set in it; reading those of a capability that has none throws,
 // as Homey does. Its listeners are kept in listeners, called as Homey
-// calls them.
+// calls them. beforeInit(device) runs just before onInit; with awaitInit
+// false the start is not waited for, and its promise is started.
 async function thermostat({
-  settings = {}, store = {}, capabilities = null, options = null, values = {},
+  settings = {}, store = {}, capabilities = null, options = null, values = {}, beforeInit = null, awaitInit = true,
 } = {}) {
   const listeners = {};
   const sent = [];
@@ -266,8 +267,10 @@ async function thermostat({
   device.registerMultipleCapabilityListener = (ids, listener) => {
     for (const id of ids) listeners[id] = (value) => listener({ [id]: value });
   };
-  await device.onInit();
-  return { device, sent, asked, watched, homey, app, listeners };
+  if (beforeInit) beforeInit(device);
+  const started = device.onInit();
+  if (awaitInit) await started;
+  return { device, sent, asked, watched, homey, app, listeners, started };
 }
 
 const value = (device, capability) => device.getCapabilityValue(capability);
@@ -766,6 +769,41 @@ test('a restart before the first FF3D, with the room temperature kept as well: t
   assert.deepEqual(mainsAfter(device, [{ sensor: 'room' }, { sensor: 'floor' }, { sensor: 'room' }]), [21, 27, 21]);
   const none = await thermostat({ values: { measure_temperature: 27, 'measure_temperature.floor': 27, 'measure_temperature.room': null } });
   assert.deepEqual(mainsAfter(none.device, [{ sensor: 'room' }]), [null]);
+});
+
+test('before the first FF3D, the room shown while the thermostat uses the floor: a kept room of 0 counts as no room sensor, '
+  + 'as with the temperatures', async () => {
+  const { device } = await thermostat({
+    settings: { shown_temperature: 'room' },
+    values: { measure_temperature: 0, 'measure_temperature.floor': 27, 'measure_temperature.room': 0 },
+  });
+  assert.deepEqual(mainsAfter(device, [{ sensor: 'floor' }, { sensor: 'room' }, { sensor: 'roomFloor' }, { sensor: 'floor' }]),
+    [null, 0, 0, null]);
+});
+
+test('a status while the start still waits: the main temperature from the values kept before anything waited', async () => {
+  let release;
+  const hold = new Promise((resolve) => { release = resolve; });
+  const { device, started } = await thermostat({
+    capabilities: new Set(['target_temperature', 'measure_temperature', 'measure_temperature.floor', 'onoff', 'measure_power', 'alarm_problem']),
+    values: KEPT_BEFORE,
+    awaitInit: false,
+    beforeInit: (made) => {
+      const add = made.addCapability;
+      made.addCapability = async (id) => {
+        await hold;
+        return add(id);
+      };
+    },
+  });
+  assert.ok(!device.logs.includes('measure_temperature.room added'), 'the start still waits');
+  device.applyThermostat('FF05', status({ sensor: 'floor' }));
+  assert.equal(value(device, 'measure_temperature'), 27);
+  release();
+  await started;
+  assert.ok(device.logs.includes('measure_temperature.room added'));
+  // The room was not there at this start: with the room shown, the main temperature kept.
+  assert.deepEqual(mainsAfter(device, [{ sensor: 'room' }]), [21]);
 });
 
 test('the sensor read not saved in the settings: logged, and tried again at the next status with the same sensor; '
