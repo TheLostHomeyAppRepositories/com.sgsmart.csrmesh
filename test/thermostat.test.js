@@ -687,43 +687,85 @@ test('measure_temperature.room whose title was not set: logged, and the title se
   assert.deepEqual(untitled, [['measure_temperature.room', title]]);
 });
 
-test('after an update from an earlier version, before the first FF3D: with the floor shown, the main temperature is the floor\'s '
-  + 'kept by Homey, not the room\'s; with the room shown it is left as it is; the first FF3D counts as before', async () => {
-  // Kept from the earlier version: the room (21) as the main temperature, and the floor (27).
-  const values = { measure_temperature: 21, 'measure_temperature.floor': 27 };
+// A thermostat from an earlier version, without measure_temperature.room
+// (added at start), with the values Homey kept: the room (21) as the main
+// temperature, and the floor (27).
+const KEPT_BEFORE = { measure_temperature: 21, 'measure_temperature.floor': 27 };
+const updated = (settings = {}, values = KEPT_BEFORE) => thermostat({
+  capabilities: new Set(['target_temperature', 'measure_temperature', 'measure_temperature.floor', 'onoff', 'measure_power', 'alarm_problem']),
+  values,
+  settings,
+});
+const mainsAfter = (device, statuses) => statuses.map((fields) => {
+  device.applyThermostat('FF05', status(fields));
+  return value(device, 'measure_temperature');
+});
+
+test('after an update from an earlier version, before the first FF3D: the main temperature from those Homey kept at start, at each '
+  + 'status, by the sensor and the faults it gives; never what it showed since; the first FF3D counts as before', async () => {
   // The sensor Floor and Automatic, no sensor in the status: the floor.
-  const { device } = await thermostat({ values });
+  const { device } = await updated();
+  assert.ok(device.logs.includes('measure_temperature.room added'));
   assert.deepEqual([value(device, 'measure_temperature'), value(device, 'measure_temperature.floor')], [21, 27], 'nothing at start');
   device.applyThermostat('FF05', status());
   await settled();
-  assert.deepEqual([value(device, 'measure_temperature'), value(device, 'measure_temperature.floor')], [27, 27]);
-  assert.equal(device.warning, null);
-  // The status says Floor, the setting Room: the status decides at once.
-  const reported = await thermostat({ values, settings: { sensor: 'room' } });
-  reported.device.applyThermostat('FF05', status({ sensor: 'floor' }));
-  assert.equal(value(reported.device, 'measure_temperature'), 27);
-  // "Displayed temperature" Floor sensor with the status saying Room.
-  const chosen = await thermostat({ values, settings: { shown_temperature: 'floor' } });
-  chosen.device.applyThermostat('FF05', status({ sensor: 'room' }));
-  assert.equal(value(chosen.device, 'measure_temperature'), 27);
-  // The room shown (the status says Room, or "Room sensor"): left as it is.
-  for (const settings of [{}, { shown_temperature: 'room' }]) {
-    const room = await thermostat({ values, settings });
-    room.device.applyThermostat('FF05', status({ sensor: 'room' }));
-    assert.equal(value(room.device, 'measure_temperature'), 21, JSON.stringify(settings));
-  }
-  // The floor kept empty: the main temperature empty too, with no warning of
-  // its own before the temperatures.
-  const empty = await thermostat({ values: { measure_temperature: 21, 'measure_temperature.floor': null } });
-  empty.device.applyThermostat('FF05', status());
+  assert.deepEqual([value(device, 'measure_temperature'), value(device, 'measure_temperature.floor'), device.warning], [27, 27, null]);
+  // a) The status says Floor, then Room: the floor, then the room. The room
+  // was added at this start, so the main temperature kept is the room's.
+  const { device: moving } = await updated();
+  assert.deepEqual(mainsAfter(moving, [{ sensor: 'floor' }, { sensor: 'room' }, { sensor: 'floor' }, { sensor: 'roomFloor' }]),
+    [27, 21, 27, 21]);
+  // b) FFF empties the floor until a status without it; the floor sensor
+  // bits 10 only with a kept floor of 0 (E1), as with the temperatures; E2
+  // the room.
+  const { device: faulty } = await updated();
+  assert.deepEqual(mainsAfter(faulty, [{ errors: 0x04 }, {}, { errors: 0x08 }, {}]), [null, 27, 27, 27]);
+  assert.deepEqual(mainsAfter(faulty, [{ sensor: 'room', errors: 0x10 }, { sensor: 'room' }]), [null, 21]);
+  const { device: zero } = await updated({}, { measure_temperature: 21, 'measure_temperature.floor': 0 });
+  assert.deepEqual(mainsAfter(zero, [{ errors: 0x08 }, {}]), [null, 0]);
+  // b) "Displayed temperature" Floor sensor while the thermostat uses only
+  // the room: empty; with the floor: the floor. Room sensor: the room.
+  const { device: chosen } = await updated({ shown_temperature: 'floor' });
+  assert.deepEqual(mainsAfter(chosen, [{ sensor: 'room' }, { sensor: 'floor' }]), [null, 27]);
+  const { device: room } = await updated({ shown_temperature: 'room' });
+  assert.deepEqual(mainsAfter(room, [{ sensor: 'floor' }]), [21]);
+  // The status says Floor, the setting Room: the status decides.
+  const { device: reported } = await updated({ sensor: 'room' });
+  assert.deepEqual(mainsAfter(reported, [{ sensor: 'floor' }]), [27]);
+  // The room not added (a failure, logged): the main temperature kept as well.
+  const refusing = new (class extends Set {
+    add(id) {
+      if (id === 'measure_temperature.room') throw new Error('no room');
+      return super.add(id);
+    }
+  })(['target_temperature', 'measure_temperature', 'measure_temperature.floor', 'onoff', 'measure_power']);
+  const { device: unadded } = await thermostat({ capabilities: refusing, values: KEPT_BEFORE });
+  assert.ok(unadded.errors.includes('measure_temperature.room not added: no room'));
+  assert.deepEqual(mainsAfter(unadded, [{ sensor: 'room' }, { sensor: 'floor' }]), [21, 27]);
+  // A setting changed before the first FF3D: the same rules at once.
+  await chosen.onSettings({ newSettings: { ...chosen.getSettings(), shown_temperature: 'room' }, changedKeys: ['shown_temperature'] });
+  assert.equal(value(chosen, 'measure_temperature'), 21);
+  // The floor kept empty: empty too, with no warning of its own before the
+  // temperatures.
+  const { device: empty } = await updated({}, { measure_temperature: 21, 'measure_temperature.floor': null });
+  empty.applyThermostat('FF05', status());
   await settled();
-  assert.deepEqual([value(empty.device, 'measure_temperature'), empty.device.warning], [null, null]);
-  assert.ok(!empty.device.logs.some((line) => line.startsWith('shown temperature empty')));
-  // The first FF3D: as before, and a status after it does not take the kept value.
+  assert.deepEqual([value(empty, 'measure_temperature'), empty.warning], [null, null]);
+  assert.ok(!empty.logs.some((line) => line.startsWith('shown temperature empty')));
+  // The first FF3D: as before, and a status after it takes nothing kept.
   device.applyThermostat('FF3D', { location: LOC, room: 21.5, floor: 26, floorLimit: 28 });
   assert.deepEqual(temps(device), [26, 26, 21.5]);
-  device.applyThermostat('FF05', status());
-  assert.deepEqual(temps(device), [26, 26, 21.5]);
+  device.applyThermostat('FF05', status({ sensor: 'room' }));
+  assert.deepEqual(temps(device), [21.5, null, 21.5]);
+});
+
+test('a restart before the first FF3D, with the room temperature kept as well: the room shown is the kept room, empty when it '
+  + 'has none, never the main temperature from before', async () => {
+  const { device } = await thermostat({ values: { measure_temperature: 27, 'measure_temperature.floor': 27, 'measure_temperature.room': 21 } });
+  assert.ok(!device.logs.includes('measure_temperature.room added'));
+  assert.deepEqual(mainsAfter(device, [{ sensor: 'room' }, { sensor: 'floor' }, { sensor: 'room' }]), [21, 27, 21]);
+  const none = await thermostat({ values: { measure_temperature: 27, 'measure_temperature.floor': 27, 'measure_temperature.room': null } });
+  assert.deepEqual(mainsAfter(none.device, [{ sensor: 'room' }]), [null]);
 });
 
 test('the sensor read not saved in the settings: logged, and tried again at the next status with the same sensor; '
