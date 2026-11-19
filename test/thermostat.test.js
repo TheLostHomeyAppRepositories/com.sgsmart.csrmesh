@@ -1419,6 +1419,46 @@ test('a thermostat added before: "Sensor" Floor, the default then, set to Automa
   assert.ok(unmarked.device.errors.includes('sensorAutoOnce not stored: full'));
 });
 
+test('the mark not stored at start, then Floor chosen under "Sensor": the mark is stored with it, so the next start keeps Floor; '
+  + 'a mark already there is not stored again, and another setting does not store it', async () => {
+  let refuse = true;
+  const stores = [];
+  const { device } = await thermostat({
+    settings: { sensor: 'floor' },
+    store: { sensorAutoOnce: undefined },
+    beforeInit: (made) => {
+      const store = made.setStoreValue.bind(made);
+      made.setStoreValue = async (key, stored) => {
+        stores.push(key);
+        if (refuse && key === 'sensorAutoOnce') throw new Error('full');
+        return store(key, stored);
+      };
+    },
+  });
+  assert.deepEqual([device._settings.sensor, device.getStoreValue('sensorAutoOnce')], ['auto', undefined]);
+  assert.ok(device.errors.includes('sensorAutoOnce not stored: full'));
+  // Floor chosen; storing works again. Homey saves the setting after onSettings.
+  refuse = false;
+  await device.onSettings({ newSettings: { ...device.getSettings(), sensor: 'floor' }, changedKeys: ['sensor'] });
+  device._settings.sensor = 'floor';
+  assert.equal(device.getStoreValue('sensorAutoOnce'), true);
+  const next = await thermostat({ settings: { ...device._settings }, store: { ...device._store } });
+  assert.equal(next.device._settings.sensor, 'floor');
+  assert.ok(!next.device.logs.some((line) => line.startsWith('settings at start')));
+  // Changed again, the mark there: not stored again.
+  const count = stores.length;
+  await device.onSettings({ newSettings: { ...device.getSettings(), sensor: 'room' }, changedKeys: ['sensor'] });
+  assert.equal(stores.length, count);
+  // Another setting changed while the mark is missing: not stored there.
+  const other = await thermostat({
+    settings: { sensor: 'auto' },
+    store: { sensorAutoOnce: undefined },
+    beforeInit: (made) => { made.setStoreValue = async () => { throw new Error('full'); }; },
+  });
+  await other.device.onSettings({ newSettings: { ...other.device.getSettings(), heating_cable_power: 800 }, changedKeys: ['heating_cable_power'] });
+  assert.equal(other.device.errors.filter((line) => line.startsWith('sensorAutoOnce not stored')).length, 1, 'only at start');
+});
+
 // The driver as Homey gives it to the device (its entry in app.json).
 const driverManifest = () => JSON.parse(read('app.json')).drivers.find((d) => d.id === 'sg_thermostat');
 
