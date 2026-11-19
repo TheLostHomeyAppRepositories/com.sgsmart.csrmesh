@@ -125,6 +125,22 @@ test('the settings: "Sensor" with Automatic first and by default, "Displayed tem
   for (const text of [byId.sensor.hint.en, byId.sensor.hint.no]) assert.doesNotMatch(text, /[«»“”–—]/);
 });
 
+test('the 2.10.0 changelog: Trond\'s text word for word, in Norwegian and English, the last entry; straight quotes, no dashes; '
+  + 'the version the same in the manifest and the package', () => {
+  const changelogs = JSON.parse(read('.homeychangelog.json'));
+  assert.deepEqual(Object.keys(changelogs).slice(-2), ['2.9.0', '2.10.0']);
+  assert.equal(changelogs['2.10.0'].no, 'HeatReg Smart: Når termostaten bruker gulvføleren, viser Homey nå gulvtemperaturen i stedet for '
+    + 'romtemperaturen. Ny innstilling "Vist temperatur" (Automatisk, Gulvføler, Romføler). Romtemperaturen vises som egen måling. '
+    + 'Homey følger føleren termostaten selv melder.');
+  assert.equal(changelogs['2.10.0'].en, 'HeatReg Smart: When the thermostat uses the floor sensor, Homey now shows the floor temperature '
+    + 'instead of the room temperature. New "Displayed temperature" setting (Automatic, Floor sensor, Room sensor). Room temperature '
+    + 'is shown as a separate measurement. Homey follows the sensor reported by the thermostat.');
+  for (const text of Object.values(changelogs['2.10.0'])) assert.doesNotMatch(text, /[“”‘’«»…–—]/);
+  const lock = JSON.parse(read('package-lock.json'));
+  assert.deepEqual([read('app.json'), read('.homeycompose/app.json'), read('package.json')].map((file) => JSON.parse(file).version)
+    .concat([lock.version, lock.packages[''].version]), ['2.10.0', '2.10.0', '2.10.0', '2.10.0', '2.10.0']);
+});
+
 test('pairing: a thermostat with a mesh id is listed with the driver\'s capabilities; none found says where the others go', async () => {
   const app = { logs: [], errors: [], log() {}, error() {} };
   app.csr = fake.fakeCsr([{ meshId: MESH_ID, name: '@MT1A2B', product: csrProductForName('@MT1A2B'), location: LOC },

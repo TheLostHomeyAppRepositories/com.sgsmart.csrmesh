@@ -683,7 +683,7 @@ test('the texts: the SG password is not stored, the passphrase hint and the stor
   for (const language of ['en', 'no']) {
     for (const device of ['LEDDim Smart DIN', 'Smart DIN 3600', 'LEDDim Smart 3.0']) assert.ok(changelogs['2.9.0'][language].includes(device), `${language}: ${device}`);
   }
-  assert.deepEqual(Object.keys(changelogs).slice(-9), ['2.8.4', '2.8.5', '2.8.6', '2.8.7', '2.8.8', '2.8.9', '2.8.10', '2.8.11', '2.9.0']);
+  assert.deepEqual(Object.keys(changelogs).slice(-10), ['2.8.4', '2.8.5', '2.8.6', '2.8.7', '2.8.8', '2.8.9', '2.8.10', '2.8.11', '2.9.0', '2.10.0']);
 });
 
 // ---- the type in the account
