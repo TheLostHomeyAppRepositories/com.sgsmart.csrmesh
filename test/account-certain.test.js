@@ -205,7 +205,7 @@ test('the settings page leaves "X of Y respond" out when a home has no certain d
   const page = read('settings/index.html');
   assert.ok(page.includes('const answering = home.checked && home.total > 0;'));
   assert.ok(page.includes("const text = home.otherNetwork ? 'settings.account.csrOtherNetwork' : answering ? 'settings.account.csrAnswering' : 'settings.account.csr';"));
-  assert.ok(page.includes("Homey.__(text, { devices: countText(csr), answering: home.answering, total: home.total })"));
+  assert.ok(page.includes("Homey.__(text, { devices: devicesText(home.csrGroups, csr), answering: home.answering, total: home.total })"));
 });
 
 // A first generation dimmer added here, with its id and settings; it records

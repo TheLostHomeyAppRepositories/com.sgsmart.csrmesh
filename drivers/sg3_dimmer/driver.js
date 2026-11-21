@@ -26,6 +26,14 @@ const PROXY_SERVICE_SHORT = '1828';
 // the keys are the app's (app.js, sg3); the device is lib/SG3Device.js. It
 // has no settings.
 class SG3Driver extends Homey.Driver {
+  // What this driver lists and says: the dimmers here; HeatReg Smart 3.0
+  // in drivers/sg3_thermostat, which pairs as this one does.
+  _pairing() {
+    return {
+      listing: undefined, what: 'dimmer(s)', none: 'pair.sg3.none', allAdded: 'pair.sg3.allAdded',
+    };
+  }
+
   // Athom: the-basics/devices/pairing.md and
   // advanced/custom-views/custom-pairing-views.md (Homey.emit). An error from
   // list_devices is shown in the list.
@@ -73,11 +81,14 @@ class SG3Driver extends Homey.Driver {
     if (!fetched) throw new Error(this.homey.__('pair.sg3.loginFirst'));
     if (!network && this._fetchAgain()) throw new Error(this.homey.__('pair.sg3Guide.fetchAgain'));
     const addedIds = new Set(this.getDevices().map((device) => String((device.getData() || {}).id || '').toUpperCase()));
-    const { devices, inAccount, inScan, unknown, added } = sg3PairingDevices(this._account(), addedIds, found);
-    this.log(`pair: SG Smart 3.0: ${inAccount} dimmer(s) in the SG account, ${inScan} more found in the scan`
+    const pairing = this._pairing();
+    const {
+      devices, inAccount, inScan, unknown, added,
+    } = sg3PairingDevices(this._account(), addedIds, found, pairing.listing);
+    this.log(`pair: SG Smart 3.0: ${inAccount} ${pairing.what} in the SG account, ${inScan} more found in the scan`
       + `${unknown ? `, ${unknown} of a type not known here left out` : ''}, ${added} already added`);
-    if (!inAccount && !inScan) throw new Error(this.homey.__('pair.sg3.none'));
-    if (!devices.length) throw new Error(this.homey.__('pair.sg3.allAdded'));
+    if (!inAccount && !inScan) throw new Error(this.homey.__(pairing.none));
+    if (!devices.length) throw new Error(this.homey.__(pairing.allAdded));
     return devices;
   }
 

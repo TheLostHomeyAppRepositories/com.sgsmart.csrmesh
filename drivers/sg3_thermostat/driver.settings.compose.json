@@ -1,0 +1,67 @@
+[
+  {
+    "type": "group",
+    "label": {
+      "en": "Thermostat",
+      "no": "Termostat"
+    },
+    "children": [
+      {
+        "id": "shown_temperature",
+        "type": "dropdown",
+        "value": "auto",
+        "label": {
+          "en": "Displayed temperature",
+          "no": "Vist temperatur"
+        },
+        "values": [
+          {
+            "id": "auto",
+            "label": {
+              "en": "Automatic",
+              "no": "Automatisk"
+            }
+          },
+          {
+            "id": "floor",
+            "label": {
+              "en": "Floor sensor",
+              "no": "Gulvføler"
+            }
+          },
+          {
+            "id": "room",
+            "label": {
+              "en": "Room sensor",
+              "no": "Romføler"
+            }
+          }
+        ],
+        "hint": {
+          "en": "Choose which temperature Homey displays. Automatic follows the sensor used by the thermostat.",
+          "no": "Velg hvilken temperatur Homey skal vise. Automatisk følger føleren termostaten bruker."
+        }
+      },
+      {
+        "id": "heating_cable_power",
+        "type": "number",
+        "value": 0,
+        "min": 0,
+        "max": 5000,
+        "step": 10,
+        "units": {
+          "en": "W",
+          "no": "W"
+        },
+        "label": {
+          "en": "Heating cable power",
+          "no": "Varmekabelens effekt"
+        },
+        "hint": {
+          "en": "Enter the power from the cable label or installation papers. Homey shows it while the thermostat heats, but does not measure it. At 0, no power is shown.",
+          "no": "Skriv effekten fra kabelmerket eller installasjonspapirene. Homey viser den mens termostaten varmer, men måler den ikke. Ved 0 vises ingen effekt."
+        }
+      }
+    ]
+  }
+]

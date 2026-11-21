@@ -247,8 +247,8 @@ test('the check asks only the homes on the app\'s network password; another home
   assert.ok(line.startsWith('[SG account] check: 0 of 2 answer, '), line);
   assert.ok(line.includes(', 0 uncertain (not counted), 3 in 1 home(s) on another network password, not asked, 0 SG Smart 3.0 not asked'), line);
   // The page's text for it, in both languages.
-  assert.equal(translator('no')('settings.account.csrOtherNetwork', { devices: '3 enheter' }), 'SG Smart: 3 enheter, annet nettverkspassord, ikke spurt.');
-  assert.equal(translator('en')('settings.account.csrOtherNetwork', { devices: '3 devices' }), 'SG Smart: 3 devices, another network password, not asked.');
+  assert.equal(translator('no')('settings.account.csrOtherNetwork', { devices: '3 enheter' }), 'SG Smart: 3 enheter. Annet nettverkspassord, ikke spurt.');
+  assert.equal(translator('en')('settings.account.csrOtherNetwork', { devices: '3 devices' }), 'SG Smart: 3 devices. Another network password, not asked.');
   // Homes on one password: all asked, none marked, and the line as before.
   const same = makeApp({ homes: [home(LOC_A, null, [0x8101]), home(LOC_B, null, [0x8201])], paired: [0x8101] });
   await run(same.app, same.app.account._check(same.app.account._run));

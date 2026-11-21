@@ -233,7 +233,7 @@ test('no text asks for other SG devices named @ND: only the first generation LED
     push: ', også TW: av, på og dimming, under utprøving.',
     plug: ', Smart Socket og Smart DIN 3600: under utprøving.',
     thermostat: ': temperaturene, ønsket temperatur, av og på og forhåndsinnstillingen i Homey.',
-    sg3: ': LEDDim Smart 3.0 er testet og fungerer. LEDDim Smart 2-pol 3.0 er under utprøving. Begge krever innlogging med SG-kontoen. Andre 3.0-produkter støttes ikke ennå.',
+    sg3: ': LEDDim Smart 3.0 er testet og fungerer. LEDDim Smart 2-pol 3.0 er under utprøving. HeatReg Smart 3.0 viser temperaturene, måltemperaturen og av og på i Homey, under utprøving. Alle krever innlogging med SG-kontoen. Andre 3.0-produkter støttes ikke ennå.',
     other: 'Andre SG-enheter, som Floor og Pill DALI, støttes ikke ennå.',
     report: 'Fungerer ikke alt som det skal? Meld fra i forumtråden.',
   });
@@ -245,7 +245,7 @@ test('no text asks for other SG devices named @ND: only the first generation LED
     push: ', including TW: on, off and dimming, being tested.',
     plug: ', Smart Socket and Smart DIN 3600: being tested.',
     thermostat: ': the temperatures, the target temperature, on and off and the preset in Homey.',
-    sg3: ': LEDDim Smart 3.0 has been tested and works. LEDDim Smart 2-pole 3.0 is being tested. Both need you to log in with your SG account. Other 3.0 products are not supported yet.',
+    sg3: ': LEDDim Smart 3.0 has been tested and works. LEDDim Smart 2-pole 3.0 is being tested. HeatReg Smart 3.0 shows the temperatures, the target temperature and on and off in Homey, being tested. All need you to log in with your SG account. Other 3.0 products are not supported yet.',
     other: 'Other SG devices, such as Floor and Pill DALI, are not supported yet.',
     report: 'Something not working? Report it in the forum thread.',
   });
@@ -265,8 +265,8 @@ test('no text asks for other SG devices named @ND: only the first generation LED
   // 2.8.0: what is tested and works, and what is not tested yet, as Trond
   // worded the store texts (2026-11-08), without URLs; LEDDim Smart DIN and
   // Smart DIN 3600 added (2026-11-09).
-  assert.match(read('README.txt'), /The first generation \(@NDxxxx\) and LEDDim Smart 3\.0 have been tested and work\. LEDDim Smart generations 2 to 4, LEDDim Smart Pill, LEDDim Smart DIN, LEDDim Smart Push, Smart Plug, Smart Socket, Smart DIN 3600, HeatReg Smart and LEDDim Smart 2-pole 3\.0 have not been tested yet\./);
-  assert.match(read('README.no.txt'), /Første generasjon \(@NDxxxx\) og LEDDim Smart 3\.0 er testet og virker\. LEDDim Smart generasjon 2 til 4, LEDDim Smart Pill, LEDDim Smart DIN, LEDDim Smart Push, Smart Plug, Smart Socket, Smart DIN 3600, HeatReg Smart og LEDDim Smart 2-pol 3\.0 er ikke testet ennå\./);
+  assert.match(read('README.txt'), /The first generation \(@NDxxxx\) and LEDDim Smart 3\.0 have been tested and work\. LEDDim Smart generations 2 to 4, LEDDim Smart Pill, LEDDim Smart DIN, LEDDim Smart Push, Smart Plug, Smart Socket, Smart DIN 3600, HeatReg Smart, LEDDim Smart 2-pole 3\.0 and HeatReg Smart 3\.0 have not been tested yet\./);
+  assert.match(read('README.no.txt'), /Første generasjon \(@NDxxxx\) og LEDDim Smart 3\.0 er testet og virker\. LEDDim Smart generasjon 2 til 4, LEDDim Smart Pill, LEDDim Smart DIN, LEDDim Smart Push, Smart Plug, Smart Socket, Smart DIN 3600, HeatReg Smart, LEDDim Smart 2-pol 3\.0 og HeatReg Smart 3\.0 er ikke testet ennå\./);
   assert.doesNotMatch(read('README.txt') + read('README.no.txt'), /https?:|www\./, 'no URLs');
   // Two paragraphs at most, and the contributors in the manifest, not here
   // (Athom: app-store/guidelines.md, 1.3; Trond 2026-11-08).
@@ -323,6 +323,7 @@ test('driver names (2.5.0): the choices when adding a device, the same in app.js
     sg_plug: { en: 'Smart Plug and Smart Socket', no: 'Smart Plug og Smart Socket' },
     sg_thermostat: { en: 'HeatReg Smart', no: 'HeatReg Smart' },
     sg3_dimmer: { en: 'LEDDim Smart 3.0', no: 'LEDDim Smart 3.0' },
+    sg3_thermostat: { en: 'HeatReg Smart 3.0', no: 'HeatReg Smart 3.0' },
   };
   for (const [driver, name] of Object.entries(names)) {
     assert.deepEqual(JSON.parse(read(`drivers/${driver}/driver.compose.json`)).name, name, driver);
@@ -402,8 +403,10 @@ test('every pair text the drivers and their views use is there in both languages
     'drivers/sg_group/repair/select_members.html', 'lib/csrPairing.js'].map(read).join('\n');
   const steps = [...sources.matchAll(/data-step="([A-Za-z]+)"/g)].map((m) => `pair.guide.${m[1]}`);
   const durations = guideDurations().map((key) => `pair.guide.${key}`);
-  // LEDDim Smart 3.0 names its texts in full (pair.sg3Guide, pair.sg3).
-  const sg3 = ['drivers/sg3_dimmer/driver.js', 'drivers/sg3_dimmer/pair/guide.html'].map(read).join('\n');
+  // LEDDim Smart 3.0 and HeatReg Smart 3.0 name their texts in full
+  // (pair.sg3Guide, pair.sg3, pair.sg3ThermostatGuide, pair.sg3Thermostat).
+  const sg3 = ['drivers/sg3_dimmer/driver.js', 'drivers/sg3_dimmer/pair/guide.html',
+    'drivers/sg3_thermostat/driver.js', 'drivers/sg3_thermostat/pair/guide.html'].map(read).join('\n');
   const used = [...new Set([...`${sources}\n${sg3}`.matchAll(/['"](pair(?:\.[A-Za-z0-9]+)+)['"]/g)].map((m) => m[1]).concat(steps, durations))];
   assert.ok(used.length >= 15, `${used.length} keys`);
   const leaves = (o, p) => Object.entries(o).flatMap(([k, v]) => (typeof v === 'object' ? leaves(v, `${p}${k}.`) : [`${p}${k}`]));

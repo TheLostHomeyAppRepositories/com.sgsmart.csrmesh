@@ -67,7 +67,7 @@
       <li><strong>LEDDim Smart Push</strong><span data-i18n="settings.otherDevice.push">, including TW: on, off and dimming, being tested.</span></li>
       <li><strong>Smart Plug</strong><span data-i18n="settings.otherDevice.plug">, Smart Socket and Smart DIN 3600: being tested.</span></li>
       <li><strong>HeatReg Smart</strong><span data-i18n="settings.otherDevice.thermostat">: the temperatures, the target temperature, on and off and the preset in Homey.</span></li>
-      <li><strong>SG Smart 3.0</strong><span data-i18n="settings.otherDevice.sg3">: LEDDim Smart 3.0 has been tested and works. LEDDim Smart 2-pole 3.0 is being tested. Both need you to log in with your SG account. Other 3.0 products are not supported yet.</span></li>
+      <li><strong>SG Smart 3.0</strong><span data-i18n="settings.otherDevice.sg3">: LEDDim Smart 3.0 has been tested and works. LEDDim Smart 2-pole 3.0 is being tested. HeatReg Smart 3.0 shows the temperatures, the target temperature and on and off in Homey, being tested. All need you to log in with your SG account. Other 3.0 products are not supported yet.</span></li>
       <li data-i18n="settings.otherDevice.other">Other SG devices, such as Floor and Pill DALI, are not supported yet.</li>
     </ul>
     <p data-i18n="settings.otherDevice.report">Something not working? Report it in the forum thread.</p>
@@ -234,24 +234,48 @@
       });
       // "enhet" after 1, "enheter" after any other number.
       const countText = (count) => Homey.__(count === 1 ? 'settings.account.countOne' : 'settings.account.countMany', { count });
+      // The devices of a line by product (lib/account.js, productGroups):
+      // "2 LEDDim Smart 3.0 (can be added)" when the product has the
+      // driver's name, "(added under <driver>)" when not, "(not supported
+      // yet)", "(recalled, not added)", other devices last, and the product
+      // alone where it cannot be added now. "2-pole" in the user's language.
+      // Without groups (a summary from before them), the count.
+      const groupKeys = {
+        same: 'settings.account.groupSame',
+        add: 'settings.account.group',
+        notYet: 'settings.account.groupNotYet',
+        recalled: 'settings.account.groupRecalled',
+        plain: 'settings.account.groupPlain',
+      };
+      const groupText = (group) => {
+        const tokens = {
+          count: group.count,
+          product: String(group.product || '').replace('2-pole', Homey.__('settings.account.twoPole')),
+          driver: group.driver,
+        };
+        if (group.state === 'other') return Homey.__(group.count === 1 ? 'settings.account.otherOne' : 'settings.account.otherMany', tokens);
+        if (group.state === 'otherPlain') return Homey.__(group.count === 1 ? 'settings.account.otherPlainOne' : 'settings.account.otherPlainMany', tokens);
+        return Homey.__(group.state === 'add' && group.same ? groupKeys.same : groupKeys[group.state], tokens);
+      };
+      const devicesText = (groups, count) => (Array.isArray(groups) && groups.length ? groups.map(groupText).join(', ') : countText(count));
       // One home: its title, then a point per type, each with its lines.
       // SG Smart (the first generation and the later CSRmesh devices): the
-      // count, "X of Y respond" when there is a certain device to count
+      // devices by product (devicesText), "X of Y respond" when there is a certain device to count
       // (lib/account.js), and the network password; under it, the devices
       // that do not respond and those not checked. A home on another network
       // password was not asked: so it says, instead of "X of Y respond". The
       // Smart Switches the check did not ask, when there are any: a line
       // under the first.
-      // SG Smart 3.0: the count
-      // and what to do: the network in use, kept before the home's key, or
-      // later (lib/account.js, sg3State).
+      // SG Smart 3.0: the devices by product (devicesText) and what to do:
+      // the network in use, kept before the home's key, or later
+      // (lib/account.js, sg3State).
       const homeLines = (home) => {
         const items = [];
         const csr = home.devices - home.sg3;
         if (csr > 0 || !home.sg3) {
           const answering = home.checked && home.total > 0;
           const text = home.otherNetwork ? 'settings.account.csrOtherNetwork' : answering ? 'settings.account.csrAnswering' : 'settings.account.csr';
-          const lines = [[Homey.__(text, { devices: countText(csr), answering: home.answering, total: home.total }),
+          const lines = [[Homey.__(text, { devices: devicesText(home.csrGroups, csr), answering: home.answering, total: home.total }),
             Homey.__(home.passphrase ? 'settings.account.passwordFetched' : 'settings.account.passwordDefault')].join(' ')];
           if (home.switches) lines.push(Homey.__('settings.account.switches', { count: home.switches }));
           if (home.quiet.length) lines.push(Homey.__('settings.account.quiet', { devices: home.quiet.map(shownDevice).join(', ') }));
@@ -259,7 +283,7 @@
           items.push(lines);
         }
         const sg3Text = { ready: 'settings.account.sg3Ready', fetchAgain: 'settings.account.sg3FetchAgain' }[home.sg3State] || 'settings.account.sg3';
-        if (home.sg3) items.push([Homey.__(sg3Text, { devices: countText(home.sg3) })]);
+        if (home.sg3) items.push([Homey.__(sg3Text, { devices: devicesText(home.sg3Groups, home.sg3) })]);
         return { title: Homey.__('settings.account.home', { number: home.number }), items };
       };
       const showAccount = (summary) => {

@@ -1,0 +1,100 @@
+{
+  "name": {
+    "en": "HeatReg Smart 3.0",
+    "no": "HeatReg Smart 3.0"
+  },
+  "class": "thermostat",
+  "capabilities": [
+    "target_temperature",
+    "measure_temperature",
+    "measure_temperature.floor",
+    "measure_temperature.room",
+    "onoff",
+    "thermostat_mode",
+    "sg_heating",
+    "measure_power"
+  ],
+  "capabilitiesOptions": {
+    "target_temperature": {
+      "min": 5,
+      "max": 35,
+      "step": 0.5,
+      "decimals": 1
+    },
+    "measure_temperature.floor": {
+      "title": {
+        "en": "Floor temperature",
+        "no": "Gulvtemperatur"
+      }
+    },
+    "measure_temperature.room": {
+      "title": {
+        "en": "Room temperature",
+        "no": "Romtemperatur"
+      }
+    },
+    "thermostat_mode": {
+      "uiComponent": null,
+      "values": [
+        {
+          "id": "heat",
+          "title": {
+            "en": "Heat",
+            "no": "Varme"
+          }
+        },
+        {
+          "id": "off",
+          "title": {
+            "en": "Off",
+            "no": "Av"
+          }
+        }
+      ]
+    },
+    "measure_power": {
+      "approximated": true
+    },
+    "sg_heating": {
+      "titleTrue": {
+        "en": "Heating",
+        "no": "Varmer"
+      },
+      "titleFalse": {
+        "en": "Not heating",
+        "no": "Varmer ikke"
+      }
+    }
+  },
+  "platforms": [
+    "local"
+  ],
+  "connectivity": [
+    "ble"
+  ],
+  "images": {
+    "small": "{{driverAssetsPath}}/images/small.png",
+    "large": "{{driverAssetsPath}}/images/large.png",
+    "xlarge": "{{driverAssetsPath}}/images/xlarge.png"
+  },
+  "pair": [
+    {
+      "id": "guide",
+      "navigation": {
+        "next": "list_devices"
+      }
+    },
+    {
+      "id": "list_devices",
+      "template": "list_devices",
+      "navigation": {
+        "prev": "guide",
+        "next": "add_devices"
+      }
+    },
+    {
+      "id": "add_devices",
+      "template": "add_devices"
+    }
+  ]
+}

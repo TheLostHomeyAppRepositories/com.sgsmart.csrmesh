@@ -273,6 +273,12 @@ test('the app: a device\'s passphrase by its mesh id, none for a fake device; wi
 
 // ---- X of Y answer
 
+// A group of the summary (lib/account.js, productGroups) whose product has
+// the driver's name.
+const canAdd = (count, product) => ({
+  count, product, state: 'add', driver: product, same: true,
+});
+
 test('the check: one FF04 to each later CSRmesh device with a location id, none twice and none to a first generation dimmer or 3.0; X of Y, who does not answer, and who is unknown', async () => {
   const devices = [added({ meshId: 0x8002, csr: false, name: 'Made-up hall' }), added({ meshId: 0x8003, location: 0x4343 })];
   const app = accountApp({ devices, heard: [0x8001], answering: [0x8003] });
@@ -289,10 +295,17 @@ test('the check: one FF04 to each later CSRmesh device with a location id, none 
     {
       number: 1, devices: 5, passphrase: true, sg3: 1, sg3State: 'fetchAgain', checked: true, otherNetwork: false, answering: 2, total: 4, switches: 0,
       quiet: [{ name: 'Made-up hall' }, { product: 'Smart Plug', type: 2002, address: '8004' }], unknown: [],
+      csrGroups: [
+        canAdd(2, 'LEDDim Smart'), canAdd(1, 'LEDDim Smart Pill'),
+        { count: 1, product: 'Smart Plug', state: 'add', driver: 'Smart Plug and Smart Socket', same: false },
+      ],
+      sg3Groups: [{ count: 1, product: null, state: 'otherPlain' }],
     },
     {
       number: 2, devices: 2, passphrase: false, sg3: 0, sg3State: 'later', checked: true, otherNetwork: false, answering: 1, total: 1, switches: 0,
       quiet: [], unknown: [{ product: 'LEDDim Smart', type: 1, address: '8006' }],
+      csrGroups: [canAdd(1, 'LEDDim Smart'), canAdd(1, 'LEDDim Smart Pill')],
+      sg3Groups: [],
     },
   ]);
   assert.ok(app.logs.includes('[SG account] check: 3 of 5 answer, 2 asked, 0 skipped as heard, 1 unknown (no location id), 0 uncertain (not counted), 1 SG Smart 3.0 not asked'));
@@ -491,13 +504,13 @@ test('the account summary: a line per type under each home, "enhet" or "enheter"
   const home = { number: 1, devices: 3, sg3: 1, sg3State: 'ready', passphrase: false, checked: true, answering: 2, total: 2 };
   assert.equal(summaryLines('no')(home), [
     'Hjem 1',
-    '• SG Smart: 2 enheter, 2 av 2 svarer. Nettverkspassord: 1234.',
-    '• SG Smart 3.0: 1 enhet. Legges til under LEDDim Smart 3.0.',
+    '• SG Smart: 2 enheter. 2 av 2 svarer. Nettverkspassord: 1234.',
+    '• SG Smart 3.0: 1 enhet.',
   ].join('\n'));
   assert.equal(summaryLines('en')(home), [
     'Home 1',
-    '• SG Smart: 2 devices, 2 of 2 respond. Network password: 1234.',
-    '• SG Smart 3.0: 1 device. Added under LEDDim Smart 3.0.',
+    '• SG Smart: 2 devices. 2 of 2 respond. Network password: 1234.',
+    '• SG Smart 3.0: 1 device.',
   ].join('\n'));
   const quiet = {
     number: 2, devices: 4, passphrase: true, checked: true, answering: 1, total: 3,
@@ -505,13 +518,13 @@ test('the account summary: a line per type under each home, "enhet" or "enheter"
   };
   assert.equal(summaryLines('no')(quiet), [
     'Hjem 2',
-    '• SG Smart: 4 enheter, 1 av 3 svarer. Nettverkspassord: hentet.',
+    '• SG Smart: 4 enheter. 1 av 3 svarer. Nettverkspassord: hentet.',
     '  Svarer ikke: Made-up hall.',
     '  Ikke sjekket: LEDDim Smart 1A2B.',
   ].join('\n'));
   assert.equal(summaryLines('en')(quiet), [
     'Home 2',
-    '• SG Smart: 4 devices, 1 of 3 respond. Network password: fetched.',
+    '• SG Smart: 4 devices. 1 of 3 respond. Network password: fetched.',
     '  No response: Made-up hall.',
     '  Not checked: LEDDim Smart 1A2B.',
   ].join('\n'));
@@ -532,13 +545,13 @@ test('the account summary: a line per type under each home, "enhet" or "enheter"
   };
   assert.equal(summaryLines('no')(switches), [
     'Hjem 1',
-    '• SG Smart: 33 enheter, 24 av 29 svarer. Nettverkspassord: hentet.',
+    '• SG Smart: 33 enheter. 24 av 29 svarer. Nettverkspassord: hentet.',
     '  Brytere: 4, ikke spurt.',
     '  Svarer ikke: Made-up hall.',
   ].join('\n'));
   assert.equal(summaryLines('en')(switches), [
     'Home 1',
-    '• SG Smart: 33 devices, 24 of 29 respond. Network password: fetched.',
+    '• SG Smart: 33 devices. 24 of 29 respond. Network password: fetched.',
     '  Switches: 4, not asked.',
     '  No response: Made-up hall.',
   ].join('\n'));

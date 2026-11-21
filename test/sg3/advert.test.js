@@ -34,12 +34,13 @@ test('the Network ID of the kept keys, as the nodes advertise it', () => {
   assert.equal(networkIdOf(NET_KEY), NETWORK_ID);
 });
 
-test('the address (low byte first) and the type: 0xA5 is 3080, 0xA6 is 3081 (assumed), another byte has no type', () => {
+test('the address (low byte first) and the type: 0xA5 is 3080, 0xA6 is 3081 and 0xB4 is 3021 (both assumed), another byte has no type', () => {
   assert.deepEqual(sg3NodeFromAdvert(advertisement(), NETWORK_ID), { address: 0x0005, type: 3080 });
   assert.deepEqual(sg3NodeFromAdvert(advertisement({ address: 0x66bb }), NETWORK_ID), { address: 0x66bb, type: 3080 });
   assert.deepEqual(sg3NodeFromAdvert(advertisement({ typeByte: 0xa6 }), NETWORK_ID), { address: 0x0005, type: 3081 });
+  assert.deepEqual(sg3NodeFromAdvert(advertisement({ typeByte: 0xb4 }), NETWORK_ID), { address: 0x0005, type: 3021 });
   assert.deepEqual(sg3NodeFromAdvert(advertisement({ typeByte: 0x42 }), NETWORK_ID), { address: 0x0005, type: null });
-  assert.deepEqual(MAKER_TYPES, { 0xa5: 3080, 0xa6: 3081 });
+  assert.deepEqual(MAKER_TYPES, { 0xa5: 3080, 0xa6: 3081, 0xb4: 3021 });
   const forms = advertisement();
   for (const manufacturerData of [[...forms.manufacturerData], forms.manufacturerData.toJSON(), new Uint8Array(forms.manufacturerData)]) {
     assert.deepEqual(sg3NodeFromAdvert({ ...forms, manufacturerData }, NETWORK_ID), { address: 0x0005, type: 3080 });

@@ -48,8 +48,8 @@
       "loginFirst": "Tap \"Log in and fetch\" in the SG LEDDim settings.",
       "fetchAgain": "Tap \"Fetch again\" in the SG LEDDim settings.",
       "closeApp": "Close the SG app on your phone.",
-        "near": "Keep Homey close to the dimmers. The search takes about 10 seconds.",
-        "names": "Want the names from the SG app? Tap \"Fetch again\" in the SG LEDDim settings first."
+      "near": "Keep Homey close to the dimmers. The search takes about 10 seconds.",
+      "names": "Want the names from the SG app? Tap \"Fetch again\" in the SG LEDDim settings first."
     },
     "sg3": {
       "loginFirst": "Log in with your SG account in the SG LEDDim settings first.",
@@ -67,6 +67,16 @@
       "closerOne": "Try again closer to it.",
       "closerMany": "Try again closer to them.",
       "device": "__product__ __address__"
+    },
+    "sg3Thermostat": {
+      "none": "No HeatReg Smart 3.0 found in the SG account. Add it in the SG app, then tap \"Fetch again\" in the SG LEDDim settings.",
+      "allAdded": "All HeatReg Smart 3.0 devices found have already been added."
+    },
+    "sg3ThermostatGuide": {
+      "title": "HeatReg Smart 3.0",
+      "addFirst": "Add the thermostat in the SG app first.",
+      "near": "Keep Homey close to the SG Smart 3.0 devices. The search takes about 10 seconds.",
+      "dimmer": "Homey hears the thermostat only when a LEDDim Smart 3.0 has been added."
     }
   },
   "settings": {
@@ -85,8 +95,8 @@
       "countOne": "__count__ device",
       "countMany": "__count__ devices",
       "csr": "SG Smart: __devices__.",
-      "csrAnswering": "SG Smart: __devices__, __answering__ of __total__ respond.",
-      "csrOtherNetwork": "SG Smart: __devices__, another network password, not asked.",
+      "csrAnswering": "SG Smart: __devices__. __answering__ of __total__ respond.",
+      "csrOtherNetwork": "SG Smart: __devices__. Another network password, not asked.",
       "passwordFetched": "Network password: fetched.",
       "passwordDefault": "Network password: 1234.",
       "switches": "Switches: __count__, not asked.",
@@ -106,8 +116,18 @@
         "noHomes": "The SG account has no homes. Nothing was changed.",
         "other": "Something went wrong. Try again."
       },
-      "sg3Ready": "SG Smart 3.0: __devices__. Added under LEDDim Smart 3.0.",
-      "sg3FetchAgain": "SG Smart 3.0: __devices__. Tap \"Fetch again\"."
+      "sg3Ready": "SG Smart 3.0: __devices__.",
+      "sg3FetchAgain": "SG Smart 3.0: __devices__. Tap \"Fetch again\".",
+      "groupSame": "__count__ __product__ (can be added)",
+      "group": "__count__ __product__ (added under __driver__)",
+      "groupNotYet": "__count__ __product__ (not supported yet)",
+      "groupRecalled": "__count__ __product__ (recalled, not added)",
+      "groupPlain": "__count__ __product__",
+      "otherOne": "1 other device (not supported yet)",
+      "otherMany": "__count__ other devices (not supported yet)",
+      "otherPlainOne": "1 other device",
+      "otherPlainMany": "__count__ other devices",
+      "twoPole": "2-pole"
     },
     "connection": {
       "title": "Connection"
@@ -136,7 +156,7 @@
       "push": ", including TW: on, off and dimming, being tested.",
       "plug": ", Smart Socket and Smart DIN 3600: being tested.",
       "thermostat": ": the temperatures, the target temperature, on and off and the preset in Homey.",
-      "sg3": ": LEDDim Smart 3.0 has been tested and works. LEDDim Smart 2-pole 3.0 is being tested. Both need you to log in with your SG account. Other 3.0 products are not supported yet.",
+      "sg3": ": LEDDim Smart 3.0 has been tested and works. LEDDim Smart 2-pole 3.0 is being tested. HeatReg Smart 3.0 shows the temperatures, the target temperature and on and off in Homey, being tested. All need you to log in with your SG account. Other 3.0 products are not supported yet.",
       "other": "Other SG devices, such as Floor and Pill DALI, are not supported yet.",
       "report": "Something not working? Report it in the forum thread."
     },
@@ -182,7 +202,9 @@
     "badMeshId": "The device has no valid mesh ID. Delete it and add it again.",
     "sg3NoNetwork": "Log in with your SG account in the SG LEDDim settings.",
     "sg3OtherHome": "The dimmer is not in the home fetched from your SG account.",
-    "sg3NotSent": "Could not reach the dimmer. Try again."
+    "sg3NotSent": "Could not reach the dimmer. Try again.",
+    "sg3ThermostatReadOnly": "Cannot be changed from Homey yet. Change it on the thermostat.",
+    "sg3ThermostatOtherHome": "The thermostat is not in the home fetched from your SG account."
   },
   "notification": {
     "passwordWrong": "Possibly wrong network password in SG LEDDim. Check Network Isolation in the SG app, or enter the correct network password in the settings of each device.",

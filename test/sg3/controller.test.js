@@ -263,10 +263,11 @@ test('without detailed logging: no "in: first" and no "proxy in:" lines, and the
   assert.ok(logs.some((line) => line.startsWith('link #1 closed after ') && line.includes('; in ')), logs.join('\n'));
 });
 
-// An SG message of 55 bytes after the opcode, of kind 0x2E, the rest made up.
+// An SG message of 55 bytes after the opcode, of a kind not known here
+// (0x31), the rest made up.
 const otherKind = () => {
   const parameters = Buffer.alloc(55, 0x5a);
-  parameters[0] = 0x2e;
+  parameters[0] = 0x31;
   return parameters;
 };
 const otherLines = (logs) => logs.filter((line) => line.startsWith('in: SG kind'));
@@ -283,13 +284,13 @@ test('an SG message to 0xFFFF that is not a dimmer\'s status: without detailed l
   proxyNode.publish(0xffff, Buffer.from([0x41, 0x01]));
   await settle();
   assert.deepEqual(otherLines(logs), [
-    'in: SG kind 0x2e, 55 byte(s), from 0x0005 to 0xffff',
+    'in: SG kind 0x31, 55 byte(s), from 0x0005 to 0xffff',
     'in: SG kind 0x41, 2 byte(s), from 0x0003 (in Homey) to 0xffff',
   ]);
   assert.ok(!logs.some((line) => line.includes('5a5a')), 'never its content');
-  assert.ok(statuses.every((status) => status.kind !== 0x2e && status.kind !== 0x41), 'not passed on as a status');
+  assert.ok(statuses.every((status) => status.kind !== 0x31 && status.kind !== 0x41), 'not passed on as a status');
   controller.logSummary();
-  assert.ok(logs.some((line) => line.includes('(other nodes 0, held back ') && line.includes('), other SG 3, drops ')), logs.join('\n'));
+  assert.ok(logs.some((line) => line.includes('(other nodes 0, held back ') && line.includes('), thermostat 0, other SG 3, drops ')), logs.join('\n'));
   await controller.stop();
 });
 
@@ -302,10 +303,54 @@ test('with detailed logging every one gets its line, also one without a kind; a 
   behind.localChange({ on: true, level: 30 });
   await settle();
   assert.deepEqual(otherLines(logs), [
-    'in: SG kind 0x2e, 55 byte(s), from 0x0005 to 0xffff',
-    'in: SG kind 0x2e, 55 byte(s), from 0x0005 to 0xffff',
+    'in: SG kind 0x31, 55 byte(s), from 0x0005 to 0xffff',
+    'in: SG kind 0x31, 55 byte(s), from 0x0005 to 0xffff',
     'in: SG kind none, 0 byte(s), from 0x0005 to 0xffff',
   ]);
+  await controller.stop();
+});
+
+// A HeatReg Smart 3.0's status, kind 0x2E: 55 bytes after the opcode, the
+// values where they are assumed to be (lib/sg3/protocol.js), the rest made up.
+const thermostatKind = () => {
+  const parameters = Buffer.alloc(55, 0x00);
+  parameters[0] = 0x2e;
+  parameters.set([0x15, 5, 0x17, 2], 5);
+  parameters.set([0x16, 0], 34);
+  parameters[49] = 0x04;
+  parameters[50] = 0x06;
+  return parameters;
+};
+
+test('a HeatReg Smart 3.0\'s status to 0xFFFF goes out as "thermostat", in its segments, not as a status nor as another kind; with detailed logging a line; counted', async () => {
+  const { controller, behind, logs } = setUp({ detailed: () => true });
+  const statuses = [];
+  const thermostats = [];
+  controller.on('status', (status) => statuses.push(status));
+  controller.on('thermostat', (status) => thermostats.push(status));
+  await controller.setLevel(0x0005, 25);
+  behind.publish(0xffff, thermostatKind());
+  await settle();
+  assert.deepEqual(thermostats, [{
+    node: 0x0005, room: 21.5, floor: 23.2, setPoint: 22, sensor: 'floor', heating: true, on: true,
+  }]);
+  assert.ok(statuses.every((status) => status.node !== 0x0005 || status.kind !== 0x2e));
+  assert.deepEqual(otherLines(logs), []);
+  assert.ok(logs.includes('thermostat 0x0005: room 21.5, floor 23.2, set point 22.0, sensor floor, heating, on'), logs.join('\n'));
+  controller.logSummary();
+  assert.ok(logs.some((line) => line.includes('), thermostat 1, other SG 0, drops ')), logs.join('\n'));
+  await controller.stop();
+});
+
+test('without detailed logging a HeatReg Smart 3.0\'s status has no line here (the device logs what changes)', async () => {
+  const { controller, behind, logs } = setUp();
+  const thermostats = [];
+  controller.on('thermostat', (status) => thermostats.push(status));
+  await controller.setLevel(0x0005, 25);
+  behind.publish(0xffff, thermostatKind());
+  await settle();
+  assert.equal(thermostats.length, 1);
+  assert.ok(!logs.some((line) => line.startsWith('thermostat ')), logs.join('\n'));
   await controller.stop();
 });
 

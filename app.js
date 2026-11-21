@@ -623,7 +623,10 @@ class SGSmartApp extends Homey.App {
     this._sg3 = new Sg3Controller({
       homey: this.homey,
       network,
-      deviceAddresses: () => this._sg3Devices().map((device) => device.getSg3Address()),
+      // Not a HeatReg Smart 3.0 (lib/SG3ThermostatDevice.js, sg3ListensOnly):
+      // the controller asks and sets these, and nothing is sent to it.
+      deviceAddresses: () => this._sg3Devices().filter((device) => !(typeof device.sg3ListensOnly === 'function' && device.sg3ListensOnly()))
+        .map((device) => device.getSg3Address()),
       homeyBridges: () => this._sg3Devices().filter((device) => typeof device.canBeSg3Bridge === 'function' && device.canBeSg3Bridge())
         .map((device) => device.getSg3Address()),
       held: () => this.sg3Held(),
