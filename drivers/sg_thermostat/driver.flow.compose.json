@@ -55,20 +55,6 @@
       ]
     },
     {
-      "id": "sg_heating_true",
-      "title": {
-        "en": "Started heating",
-        "no": "Begynte å varme"
-      }
-    },
-    {
-      "id": "sg_heating_false",
-      "title": {
-        "en": "Stopped heating",
-        "no": "Sluttet å varme"
-      }
-    },
-    {
       "id": "sg_window_open_true",
       "title": {
         "en": "The open window function started",
@@ -98,13 +84,6 @@
     }
   ],
   "conditions": [
-    {
-      "id": "sg_heating_is",
-      "title": {
-        "en": "!{{Is|Is not}} heating",
-        "no": "!{{Varmer|Varmer ikke}}"
-      }
-    },
     {
       "id": "sg_window_open_is",
       "title": {

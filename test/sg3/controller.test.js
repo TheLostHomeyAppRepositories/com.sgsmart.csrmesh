@@ -354,6 +354,60 @@ test('without detailed logging a HeatReg Smart 3.0\'s status has no line here (t
   await controller.stop();
 });
 
+// ------------------------------------------------------------ HeatReg Smart 3.0 commands
+
+// The node behind the proxy as a HeatReg Smart 3.0, acknowledging as told.
+function thermostatSetUp(thermostatAck, extra = {}) {
+  const set = setUp({ thermostatAckMs: 300, ...extra });
+  set.behind.thermostatAck = thermostatAck;
+  return set;
+}
+const ACK_LINE = /^0x0005 thermostat (on|off|set point \d+\.\d) to 0x0005 on link #1: 2 segment\(s\), \d+ write\(s\) in \d+\.\d s after \d+\.\d s in the queue, acked yes after \d+\.\d s; /;
+
+test('HeatReg Smart 3.0 on, off and a set point: to the thermostat, in 2 segments it acknowledges, then its own acknowledgement with Homey\'s address, matched and logged', async () => {
+  const { controller, behind, logs } = thermostatSetUp('yes');
+  const on = await controller.setThermostat(0x0005, { power: true });
+  assert.deepEqual([on.acked, on.segments, on.ack && on.ack.values], [true, 2, [1]]);
+  assert.equal(behind.on, true);
+  const off = await controller.setThermostat(0x0005, { power: false });
+  assert.deepEqual(off.ack.values, [0]);
+  assert.equal(behind.on, false);
+  const setPoint = await controller.setThermostat(0x0005, { setPoint: 21.5 });
+  assert.deepEqual([setPoint.acked, setPoint.segments, setPoint.ack.values], [true, 2, [21, 5]]);
+  assert.equal(behind.setPoint, 21.5);
+  assert.deepEqual(behind.received.filter((message) => message.kind === 0x18 || message.kind === 0x19),
+    [{ kind: 0x18, segmented: true }, { kind: 0x18, segmented: true }, { kind: 0x19, segmented: true }], 'once each, in segments');
+  const lines = logs.filter((line) => ACK_LINE.test(line));
+  assert.equal(lines.length, 3, logs.join('\n'));
+  assert.ok(lines.every((line) => /; acknowledged by the thermostat after \d+\.\d s$/.test(line)), lines.join('\n'));
+  assert.ok(lines[2].startsWith('0x0005 thermostat set point 21.5 to 0x0005'));
+  await controller.stop();
+});
+
+for (const [how, why] of [['none', 'none comes'], ['otherAddress', 'it names another address than Homey\'s'], ['otherTid', 'it has another TID']]) {
+  test(`HeatReg Smart 3.0: no acknowledgement when ${why}; a line, and it is not sent again`, async () => {
+    const { controller, behind, logs } = thermostatSetUp(how, { detailed: () => true });
+    const result = await controller.setThermostat(0x0005, { setPoint: 21.5 });
+    assert.deepEqual([result.acked, result.ack], [true, null]);
+    await settle();
+    assert.equal(behind.received.filter((message) => message.kind === 0x19).length, 1, 'sent once');
+    assert.ok(logs.some((line) => ACK_LINE.test(line) && line.endsWith('; no acknowledgement from the thermostat within 0.3 s, not sent again')), logs.join('\n'));
+    if (how !== 'none') {
+      assert.ok(logs.some((line) => /^thermostat 0x0005 acknowledged kind 0x19 TID \d+ SEQ \d+ to 0x[0-9a-f]{4}( \(Homey\))?: 21 5$/.test(line)), 'heard, with detailed logging');
+      assert.deepEqual(otherLines(logs), [], 'not another kind');
+    }
+    await controller.stop();
+  });
+}
+
+test('a dimmer\'s level is sent as before: only as many segments as it needs', async () => {
+  const { controller, proxyNode } = setUp();
+  const result = await controller.setLevel(0x0003, 25);
+  assert.deepEqual(sent(result), { acked: true, segments: 2, writes: 4 });
+  assert.deepEqual(proxyNode.received.filter((message) => message.kind === 0x07), [{ kind: 0x07, segmented: true }]);
+  await controller.stop();
+});
+
 test('without detailed logging at most OTHER_LINES of these lines on a link', async () => {
   const { controller, behind, logs } = setUp();
   await controller.setLevel(0x0005, 25);

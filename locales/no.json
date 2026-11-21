@@ -203,7 +203,6 @@
     "sg3NoNetwork": "Logg inn med SG-kontoen i innstillingene til SG LEDDim.",
     "sg3OtherHome": "Dimmeren er ikke i hjemmet som er hentet fra SG-kontoen.",
     "sg3NotSent": "Fikk ikke kontakt med dimmeren. Prøv igjen.",
-    "sg3ThermostatReadOnly": "Kan ikke endres fra Homey ennå. Endre på termostaten.",
     "sg3ThermostatOtherHome": "Termostaten er ikke i hjemmet som er hentet fra SG-kontoen."
   },
   "notification": {

@@ -1,10 +1,12 @@
 'use strict';
 
-// HeatReg Smart 3.0 (type 3021, drivers/sg3_thermostat), read only: its
-// status (kind 0x2E, where the values sit is assumed), the device that shows
-// it and never sends to the thermostat, its pairing beside the 3.0 dimmers,
-// its manifest, and the account's lines on the settings page by product
-// (Trond 2026-11-21). Made-up keys, ids and names.
+// HeatReg Smart 3.0 (type 3021, drivers/sg3_thermostat): its status (kind
+// 0x2E, where the values sit is assumed), its commands 0x18 and 0x19 and
+// their acknowledgement (assumed, not tried), the device that shows the
+// status and sends a change once, its pairing beside the 3.0 dimmers, its
+// manifest, the flow cards it shares with HeatReg Smart, and the account's
+// lines on the settings page by product (Trond 2026-11-21). Made-up keys,
+// ids and names.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -67,6 +69,65 @@ test('the status of kind 0x2E: room, floor, set point, the sensor, heating and o
   assert.equal(sg.parseSgStatus(thermostatStatus()), null, 'never a dimmer\'s status');
 });
 
+// ------------------------------------------------------------ the commands (phase B)
+
+const bytes = (buffer) => [...buffer].map((byte) => byte.toString(16).padStart(2, '0')).join(' ');
+const IDS = { tid: 0x2a, seq: 0x00 };
+
+test('0x18 on and off: the SG command opcode, then kind, TID, SEQ, the node (big-endian) and 1 or 0', () => {
+  assert.equal(sg.KIND_THERMOSTAT_POWER, 0x18);
+  assert.equal(bytes(sg.sgThermostatPower(0x5a01, true, IDS)), 'e0 e8 0e 18 2a 00 5a 01 01');
+  assert.equal(bytes(sg.sgThermostatPower(0x5a01, false, IDS)), 'e0 e8 0e 18 2a 00 5a 01 00');
+  assert.equal(bytes(sg.sgThermostatPower(0x0003, true, { tid: 0xff, seq: 0x07 })), 'e0 e8 0e 18 ff 07 00 03 01');
+  for (const on of [1, 0, 'on', null, undefined]) assert.throws(() => sg.sgThermostatPower(0x5a01, on, IDS), /true or false/, String(on));
+  assert.throws(() => sg.sgThermostatPower(0, true, IDS), /bad node address/);
+});
+
+test('0x19 the set point: whole degrees in byte 5 and tenths in byte 6, from 5 to 35 in steps of 0.5', () => {
+  assert.equal(sg.KIND_THERMOSTAT_SET_POINT, 0x19);
+  assert.equal(bytes(sg.sgThermostatSetPoint(0x5a01, 21.5, IDS)), 'e0 e8 0e 19 2a 00 5a 01 15 05');
+  assert.equal(bytes(sg.sgThermostatSetPoint(0x5a01, 5, IDS)), 'e0 e8 0e 19 2a 00 5a 01 05 00');
+  assert.equal(bytes(sg.sgThermostatSetPoint(0x5a01, 35, IDS)), 'e0 e8 0e 19 2a 00 5a 01 23 00');
+  assert.equal(bytes(sg.sgThermostatSetPoint(0x5a01, 16, IDS)), 'e0 e8 0e 19 2a 00 5a 01 10 00');
+  for (const degrees of [4.5, 35.5, 21.3, 21.25, -5, NaN, '21.5x', null]) {
+    assert.throws(() => sg.sgThermostatSetPoint(0x5a01, degrees, IDS), /5 to 35 in steps of 0.5/, String(degrees));
+  }
+});
+
+test('the commands would fit one unsegmented mesh message, and with segmented they go in two segments, as a dimmer\'s level', () => {
+  assert.equal(sg.sgThermostatPower(0x5a01, true, IDS).length, 9);
+  assert.equal(sg.sgThermostatSetPoint(0x5a01, 21.5, IDS).length, 10);
+  const { encodeMeshMessage } = require('../lib/sigmesh/message');
+  let seq = 100;
+  const pdus = (accessPayload, segmented) => encodeMeshMessage({
+    accessPayload, key: Buffer.from(APP_KEY, 'hex'), keyKind: 'application', src: 0x7f80, dst: 0x5a01, netKey: Buffer.from(NET_KEY, 'hex'),
+    ivIndex: 0, ttl: 7, allocateSeq: () => seq++, segmented,
+  });
+  for (const payload of [sg.sgThermostatPower(0x5a01, true, IDS), sg.sgThermostatSetPoint(0x5a01, 21.5, IDS)]) {
+    assert.equal(pdus(payload, false).length, 1);
+    assert.equal(pdus(payload, true).length, 2);
+  }
+});
+
+test('the acknowledgement of 0x18 and 0x19: the same kind, byte 1 is 1, the TID and SEQ of the command, an address, the values; anything else is none', () => {
+  assert.deepEqual(sg.parseThermostatAck(Buffer.from([0x18, 0x01, 0x2a, 0x00, 0x7f, 0x80, 0x01])), {
+    kind: 0x18, tid: 0x2a, seq: 0x00, address: 0x7f80, values: [1],
+  });
+  assert.deepEqual(sg.parseThermostatAck(Buffer.from([0x19, 0x01, 0x2a, 0x01, 0x7f, 0x80, 0x15, 0x05])), {
+    kind: 0x19, tid: 0x2a, seq: 0x01, address: 0x7f80, values: [0x15, 0x05],
+  });
+  assert.equal(sg.parseThermostatAck(Buffer.from([0x19, 0x00, 0x2a, 0x00, 0x7f, 0x80, 0x15])), null, 'byte 1 not 1');
+  assert.equal(sg.parseThermostatAck(Buffer.from([0x18, 0x01, 0x2a, 0x00, 0x7f, 0x80])), null, 'no value');
+  assert.equal(sg.parseThermostatAck(Buffer.from([0x09, 0x01, 0x2a, 0x00, 0x7f, 0x80, 0x01, 0x32])), null, 'a dimmer\'s reply');
+  assert.equal(sg.parseThermostatAck(thermostatStatus()), null, 'the status');
+});
+
+test('no command of kind 0x1D is built: the answer to it is not used', () => {
+  const kinds = Object.entries(sg).filter(([name]) => name.startsWith('KIND_')).map(([, kind]) => kind);
+  assert.ok(!kinds.includes(0x1d), kinds.join(','));
+  assert.doesNotMatch(read('lib/sg3/protocol.js'), /0x1d|KIND_THERMOSTAT_(GET|READ|QUERY)/i);
+});
+
 test('HeatReg Smart 3.0 is type 3021 in its own driver, never a bridge; the 3.0 dimmers stay in LEDDim Smart 3.0', () => {
   assert.deepEqual(SG3_PRODUCTS[3021], { name: 'HeatReg Smart 3.0', driver: 'sg3_thermostat', bridge: false });
   assert.equal(sg3CanBeBridge(3021), false);
@@ -76,11 +137,30 @@ test('HeatReg Smart 3.0 is type 3021 in its own driver, never a bridge; the 3.0 
 // A thermostat device with a stand-in controller that records anything sent.
 async function thermostat({ settings = {}, kept = {} } = {}) {
   const sent = [];
+  // What setThermostat resolves with (answer(command)), or the error it
+  // fails with; each call waits until the test lets it go (release).
+  const waiting = [];
   const controller = Object.assign(new EventEmitter(), {
     start() { sent.push('start'); },
     setLevel: async (...args) => { sent.push(['setLevel', ...args]); },
     getStatus: async (...args) => { sent.push(['getStatus', ...args]); },
+    setThermostat(node, command) {
+      sent.push([node, command]);
+      return new Promise((resolve, reject) => waiting.push(() => {
+        const answer = controller.answer(command);
+        if (answer instanceof Error) reject(answer);
+        else resolve(answer);
+      }));
+    },
+    answer: (command) => ({
+      acked: true, segments: 2, ack: { values: command.power === undefined ? [Math.floor(command.setPoint), (command.setPoint * 10) % 10] : [command.power ? 1 : 0], ms: 400 },
+    }),
   });
+  // Lets the oldest send answer, and what follows it run.
+  const release = async () => {
+    waiting.shift()();
+    for (let i = 0; i < 5; i += 1) await new Promise((resolve) => setImmediate(resolve));
+  };
   const app = { sg3: () => controller, sg3HomeKey: () => HOME_KEY };
   const homey = fake.fakeHomey(app, { __: (key) => key });
   const device = new SG3ThermostatDevice({
@@ -89,13 +169,13 @@ async function thermostat({ settings = {}, kept = {} } = {}) {
   const capabilities = new Set(SG3ThermostatDriver.LISTING.capabilities);
   device.hasCapability = (capability) => capabilities.has(capability);
   Object.assign(device._capabilities, kept);
-  device.refusers = {};
-  device.registerCapabilityListener = (capability, listener) => { device.refusers[capability] = listener; };
+  device.listened = {};
+  device.registerCapabilityListener = (capability, listener) => { device.listened[capability] = listener; };
   await device.onInit();
   const status = (values) => controller.emit('thermostat', { node: 0x5a01, ...sg.parseThermostatStatus(thermostatStatus(values)) });
   const shown = () => Object.fromEntries([...capabilities].map((capability) => [capability, device.getCapabilityValue(capability)]));
   return {
-    device, controller, sent, status, shown,
+    device, controller, sent, status, shown, homey, release,
   };
 }
 
@@ -164,14 +244,94 @@ test('after a start the values Homey kept stay until the first status', async ()
   assert.equal(device.getCapabilityValue('target_temperature'), 22);
 });
 
-test('a change from Homey (set point, on and off, mode) is refused with a text, and nothing is sent', async () => {
-  const { device, sent } = await thermostat();
-  assert.deepEqual(Object.keys(device.refusers).sort(), ['onoff', 'target_temperature', 'thermostat_mode']);
-  for (const [capability, value] of [['target_temperature', 23], ['onoff', false], ['thermostat_mode', 'off']]) {
-    await assert.rejects(device.refusers[capability](value), { message: 'device.sg3ThermostatReadOnly' }, capability);
-  }
+test('on and off from Homey: onoff and thermostat_mode (heat on, off off) send 0x18 once, shown at once, the acknowledged value kept', async () => {
+  const { device, sent, status, release } = await thermostat();
+  assert.deepEqual(Object.keys(device.listened).sort(), ['onoff', 'target_temperature', 'thermostat_mode']);
+  status();
+  await device.listened.onoff(false);
+  assert.deepEqual(sent, [[0x5a01, { power: false }]]);
+  assert.deepEqual([device.getCapabilityValue('onoff'), device.getCapabilityValue('thermostat_mode')], [false, 'off'], 'at once');
+  await release();
+  assert.deepEqual([device.getCapabilityValue('onoff'), device.getCapabilityValue('thermostat_mode')], [false, 'off']);
+  assert.ok(device.logs.includes('off from Homey: acknowledged by the thermostat (0)'), device.logs.join('\n'));
+  await device.listened.thermostat_mode('heat');
+  await device.listened.thermostat_mode('off');
+  assert.deepEqual(sent.slice(1), [[0x5a01, { power: true }], [0x5a01, { power: false }]]);
+});
+
+test('nothing is sent when its last status has the value and nothing of the kind is under way; while a send is, it is sent', async () => {
+  const { device, sent, status, release } = await thermostat();
+  status();
+  await device.listened.onoff(true);
   assert.deepEqual(sent, []);
-  assert.ok(device.logs.includes('target_temperature=23 from Homey refused: nothing is sent to it in this version'));
+  assert.ok(device.logs.includes('on from Homey: the thermostat is on already, nothing sent'));
+  await device.listened.onoff(false);
+  await device.listened.onoff(true);
+  assert.deepEqual(sent, [[0x5a01, { power: false }], [0x5a01, { power: true }]], 'the status says on, but off is under way');
+  await release();
+  await release();
+  assert.equal(device.getCapabilityValue('onoff'), true);
+});
+
+test('without the thermostat\'s acknowledgement, or when not sent: a line, nothing sent again, and what it last reported is shown again', async () => {
+  const { device, controller, sent, status, release } = await thermostat();
+  status();
+  controller.answer = () => ({ acked: true, segments: 2, ack: null });
+  await device.listened.onoff(false);
+  assert.equal(device.getCapabilityValue('onoff'), false);
+  await release();
+  assert.deepEqual(sent, [[0x5a01, { power: false }]], 'once');
+  assert.deepEqual([device.getCapabilityValue('onoff'), device.getCapabilityValue('thermostat_mode')], [true, 'heat'], 'as it reported');
+  assert.ok(device.logs.includes('off from Homey: no acknowledgement from the thermostat within 3 s, not sent again'));
+  controller.answer = () => new Error('made-up: no link within 30 s');
+  await device.listened.onoff(false);
+  await release();
+  assert.equal(device.getCapabilityValue('onoff'), true);
+  assert.ok(device.logs.includes('off from Homey: not sent (made-up: no link within 30 s)'));
+});
+
+test('an older send\'s missing acknowledgement does not undo a newer change of the kind', async () => {
+  const { device, controller, status, release } = await thermostat();
+  status();
+  controller.answer = (command) => (command.power === false ? { acked: true, segments: 2, ack: null } : { acked: true, segments: 2, ack: { values: [1], ms: 300 } });
+  await device.listened.onoff(false);
+  await device.listened.onoff(true);
+  await release();
+  assert.equal(device.getCapabilityValue('onoff'), true);
+  await release();
+  assert.equal(device.getCapabilityValue('onoff'), true);
+});
+
+test('the set point from Homey: stepped to 0.5, sent once it has rested 1.5 s, the last only; without an acknowledgement the one it last acknowledged or reported again', async () => {
+  const { device, controller, sent, status, homey, release } = await thermostat();
+  status();
+  await device.listened.target_temperature(21.3);
+  await device.listened.target_temperature(21.4);
+  assert.deepEqual(sent, [], 'waits');
+  homey.runMs(1500);
+  assert.deepEqual(sent, [[0x5a01, { setPoint: 21.5 }]]);
+  await release();
+  assert.equal(device.getCapabilityValue('target_temperature'), 21.5);
+  assert.ok(device.logs.includes('set point 21.5 from Homey: acknowledged by the thermostat (21 5)'), device.logs.join('\n'));
+  await device.listened.target_temperature(21.5);
+  homey.runMs(1500);
+  assert.equal(sent.length, 1, 'it acknowledged 21.5, and nothing is under way');
+  controller.answer = () => ({ acked: false, segments: 2, ack: null });
+  await device.listened.target_temperature(40);
+  homey.runMs(1500);
+  assert.deepEqual(sent[1], [0x5a01, { setPoint: 35 }], 'at most 35');
+  await release();
+  assert.equal(device.getCapabilityValue('target_temperature'), 21.5, 'as it last acknowledged');
+  status();
+  assert.equal(device.getCapabilityValue('target_temperature'), 22, 'its next status counts');
+});
+
+test('before its first status since start, a change that does not get through shows again what Homey had kept', async () => {
+  const { device, controller, release } = await thermostat({ kept: { onoff: false, thermostat_mode: 'off', target_temperature: 19.5 } });
+  controller.answer = () => ({ acked: true, segments: 2, ack: null });
+  await device.listened.onoff(true);
+  await release();
+  assert.deepEqual([device.getCapabilityValue('onoff'), device.getCapabilityValue('thermostat_mode')], [false, 'off']);
 });
 
 test('without a 3.0 network, or with another home\'s, it is unavailable with its own text', async () => {
@@ -261,7 +421,7 @@ test('the driver: "HeatReg Smart 3.0", a thermostat with the capabilities it lis
   assert.deepEqual(settings.flatMap((group) => group.children.map((child) => child.id)), ['shown_temperature', 'heating_cable_power']);
   const heatRegSettings = JSON.parse(read('drivers/sg_thermostat/driver.settings.compose.json'))[1].children;
   for (const child of settings[0].children) assert.deepEqual(child, heatRegSettings.find((other) => other.id === child.id), child.id);
-  assert.ok(!fs.existsSync(path.join(ROOT, 'drivers/sg3_thermostat/driver.flow.compose.json')), 'no flow cards of its own yet');
+  assert.ok(!fs.existsSync(path.join(ROOT, 'drivers/sg3_thermostat/driver.flow.compose.json')), 'no flow cards of its own: the heating cards are shared');
   for (const file of ['assets/icon.svg', 'assets/images/small.png', 'assets/images/large.png', 'assets/images/xlarge.png', 'assets/guide/guide.png']) {
     assert.ok(fs.readFileSync(path.join(ROOT, 'drivers/sg3_thermostat', file)).equals(fs.readFileSync(path.join(ROOT, 'drivers/sg_thermostat', file))), file);
     assert.equal(fs.statSync(path.join(ROOT, 'drivers/sg3_thermostat', file)).mode & 0o777, 0o644, file);
@@ -277,18 +437,36 @@ test('the texts of HeatReg Smart 3.0, in both languages, with straight quotes', 
   const no = JSON.parse(read('locales/no.json'));
   for (const locale of [en, no]) {
     for (const text of [...Object.values(locale.pair.sg3Thermostat), ...Object.values(locale.pair.sg3ThermostatGuide),
-      locale.device.sg3ThermostatReadOnly, locale.device.sg3ThermostatOtherHome]) {
+      locale.device.sg3ThermostatOtherHome]) {
       assert.equal(typeof text, 'string');
       assert.doesNotMatch(text, /[«»“”]/);
     }
   }
   assert.deepEqual(Object.keys(en.pair.sg3ThermostatGuide), Object.keys(no.pair.sg3ThermostatGuide));
-  // As Trond worded them (2026-11-21): the thermostat, not the SG app.
-  assert.equal(no.device.sg3ThermostatReadOnly, 'Kan ikke endres fra Homey ennå. Endre på termostaten.');
-  assert.equal(en.device.sg3ThermostatReadOnly, 'Cannot be changed from Homey yet. Change it on the thermostat.');
+  // A change from Homey is sent now, so the text for refusing one is gone.
+  assert.equal(en.device.sg3ThermostatReadOnly, undefined);
+  assert.equal(no.device.sg3ThermostatReadOnly, undefined);
   const guide = read('drivers/sg3_thermostat/pair/guide.html');
   for (const key of Object.keys(en.pair.sg3ThermostatGuide)) assert.ok(guide.includes(`'pair.sg3ThermostatGuide.${key}'`), key);
   assert.ok(read('settings/index.html').includes(en.settings.otherDevice.sg3));
+});
+
+test('the heating cards are the app\'s, with the ids they had, for HeatReg Smart and HeatReg Smart 3.0; HeatReg Smart\'s other cards stay its own', () => {
+  const app = JSON.parse(read('app.json'));
+  const cards = Object.fromEntries(Object.values(app.flow).flat().map((card) => [card.id, card]));
+  for (const id of ['sg_heating_true', 'sg_heating_false', 'sg_heating_is']) {
+    assert.ok(cards[id], id);
+    assert.deepEqual(cards[id].args, [{ type: 'device', name: 'device', filter: 'driver_id=sg_thermostat|sg3_thermostat' }], id);
+  }
+  assert.deepEqual([cards.sg_heating_true.title, cards.sg_heating_false.title, cards.sg_heating_is.title], [
+    { en: 'Started heating', no: 'Begynte å varme' }, { en: 'Stopped heating', no: 'Sluttet å varme' },
+    { en: '!{{Is|Is not}} heating', no: '!{{Varmer|Varmer ikke}}' },
+  ]);
+  assert.ok(app.flow.triggers.some((card) => card.id === 'sg_heating_true') && app.flow.conditions.some((card) => card.id === 'sg_heating_is'));
+  const own = JSON.parse(read('drivers/sg_thermostat/driver.flow.compose.json'));
+  assert.ok(!Object.values(own).flat().some((card) => card.id.startsWith('sg_heating')));
+  assert.equal(cards.sg_window_open_true.args[0].filter, 'driver_id=sg_thermostat');
+  assert.ok(read('drivers/sg_thermostat/driver.js').includes("flow.getConditionCard('sg_heating_is').registerRunListener"));
 });
 
 // ------------------------------------------------------------ the lines by product

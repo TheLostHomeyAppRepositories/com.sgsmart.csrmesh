@@ -15,6 +15,9 @@ const { meshAdvertsLineFor } = require('../../lib/meshAdverts');
 class SGThermostatDriver extends Homey.Driver {
   async onInit() {
     const { flow } = this.homey;
+    // sg_heating_is is the app's card for this driver and HeatReg Smart 3.0
+    // (.homeycompose/flow/conditions), with the same id as before: its run
+    // listener is registered here, once, for both.
     flow.getConditionCard('sg_heating_is').registerRunListener(({ device }) => device.getCapabilityValue('sg_heating') === true);
     flow.getConditionCard('sg_window_open_is').registerRunListener(({ device }) => device.getCapabilityValue('sg_window_open') === true);
     flow.getConditionCard('sg_heat_preset_is').registerRunListener(({ device, preset }) => device.getCapabilityValue('sg_heat_preset') === preset);

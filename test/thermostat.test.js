@@ -191,12 +191,16 @@ test('the setting "Displayed temperature": Automatic by default, then the floor 
 test('the Flow cards: in the manifest with both languages, and the driver answers the conditions and sends the preset through its listener', async () => {
   const cards = JSON.parse(read('drivers/sg_thermostat/driver.flow.compose.json'));
   assert.deepEqual(Object.fromEntries(Object.entries(cards).map(([kind, list]) => [kind, list.map((c) => c.id)])), {
-    triggers: ['measure_temperature.floor_changed', 'measure_temperature.room_changed', 'sg_heat_preset_changed', 'sg_heating_true', 'sg_heating_false',
+    triggers: ['measure_temperature.floor_changed', 'measure_temperature.room_changed', 'sg_heat_preset_changed',
       'sg_window_open_true', 'sg_window_open_false', 'sg_floor_limit_true', 'sg_floor_limit_false'],
-    conditions: ['sg_heating_is', 'sg_window_open_is', 'sg_heat_preset_is'],
+    conditions: ['sg_window_open_is', 'sg_heat_preset_is'],
     actions: ['sg_heat_preset_set'],
   });
-  for (const c of Object.values(cards).flat()) {
+  // The heating cards are the app's, shared with HeatReg Smart 3.0, with the
+  // same ids (test/heatreg3.test.js).
+  const shared = ['triggers/sg_heating_true', 'triggers/sg_heating_false', 'conditions/sg_heating_is']
+    .map((file) => ({ id: file.split('/')[1], ...JSON.parse(read(`.homeycompose/flow/${file}.json`)) }));
+  for (const c of [...Object.values(cards).flat(), ...shared]) {
     for (const field of ['title', 'titleFormatted', 'hint']) {
       if (c[field]) assert.deepEqual(Object.keys(c[field]).sort(), ['en', 'no'], `${c.id} ${field}`);
     }
@@ -1237,6 +1241,7 @@ test('heating and the floor limit: their titles and values; the Flow cards as be
     [{ en: 'Reached', no: 'Nådd' }, { en: 'Not reached', no: 'Ikke nådd' }]);
   const cards = Object.fromEntries(Object.values(JSON.parse(read('drivers/sg_thermostat/driver.flow.compose.json'))).flat()
     .map((c) => [c.id, c.title]));
+  for (const id of ['sg_heating_true', 'sg_heating_false']) cards[id] = JSON.parse(read(`.homeycompose/flow/triggers/${id}.json`)).title;
   assert.deepEqual([cards.sg_heating_true, cards.sg_heating_false],
     [{ en: 'Started heating', no: 'Begynte å varme' }, { en: 'Stopped heating', no: 'Sluttet å varme' }]);
   assert.deepEqual([cards.sg_floor_limit_true, cards.sg_floor_limit_false],

@@ -15,7 +15,12 @@
 //   and 2) it just handled;
 // - answers a status request with a segmented 0x09 reply to the asker;
 // - publishes a 0x03 status to its group (statusGroup) after a local change;
-// - answers Generic OnOff Get (0x8201) with Generic OnOff Status (0x8204).
+// - answers Generic OnOff Get (0x8201) with Generic OnOff Status (0x8204);
+// - as a HeatReg Smart 3.0 (thermostat): takes 0x18 (on, off) and 0x19 (the
+//   set point), and sends its acknowledgement to 0xFFFF as assumed in
+//   lib/sg3/protocol.js (parseThermostatAck); thermostatAck says how:
+//   'yes', 'none', 'otherAddress' (bytes 4 and 5 not the sender's) or
+//   'otherTid'. Every message it got is in received (kind, segmented).
 //
 // With longPdus it sends every message in one unsegmented network PDU,
 // however long, as an SG Smart 3.0 dimmer does; notifyMax is the longest
@@ -42,10 +47,12 @@ class SimulatedSgNode {
   constructor({
     netKey, appKey, address = 0x0003, ivIndex = 0, ivUpdate = false, level = 30, on = false,
     statusGroup = 0xcee8, beacon = true, ackSegments = true, ttl = 7, via = null,
-    longPdus = false, notifyMax = proxy.MAX_PROXY_PDU_LENGTH, statusLength = 10,
+    longPdus = false, notifyMax = proxy.MAX_PROXY_PDU_LENGTH, statusLength = 10, thermostatAck = 'yes',
   }) {
     Object.assign(this, { netKey, appKey, address, ivIndex, ivUpdate, level, on, statusGroup, beacon, ackSegments, ttl, via });
-    Object.assign(this, { longPdus, notifyMax, statusLength });
+    Object.assign(this, { longPdus, notifyMax, statusLength, thermostatAck });
+    this.setPoint = 20;
+    this.received = [];
     this.peers = [];
     if (via) via.peers.push(this);
     this.seq = 0x10;
@@ -154,7 +161,11 @@ class SimulatedSgNode {
     if (result.ack && ackNow && this.ackSegments && net.dst === this.address) {
       this.sendAck(net.src, this.ackSegments === 'busy' ? { ...result.ack, blockAck: 0 } : result.ack);
     }
-    if (result.kind === 'complete') this.onCommand(net.src, result.message);
+    if (result.kind === 'complete') {
+      const { parameters } = result.message;
+      this.received.push({ kind: parameters && parameters.length ? parameters[0] : null, segmented: (net.transportPdu[0] & 0x80) !== 0 });
+      this.onCommand(net.src, result.message);
+    }
   }
 
   // What reaches the proxy from the client also reaches the nodes behind it.
@@ -195,6 +206,15 @@ class SimulatedSgNode {
         this.level = level;
       }
       this.events.push(`level ${level}`);
+    } else if (kind === 0x18 || kind === 0x19) {
+      const values = kind === 0x18 ? [p[5]] : [p[5], p[6]];
+      if (kind === 0x18) this.on = p[5] === 1;
+      else this.setPoint = p[5] + p[6] / 10;
+      this.events.push(kind === 0x18 ? `thermostat ${this.on ? 'on' : 'off'}` : `thermostat set point ${this.setPoint}`);
+      if (this.thermostatAck === 'none') return;
+      const to = this.thermostatAck === 'otherAddress' ? src ^ 0x0001 : src;
+      const ackTid = this.thermostatAck === 'otherTid' ? (tid + 1) & 0xff : tid;
+      this.publish(0xffff, Buffer.from([kind, 0x01, ackTid, seq, to >>> 8, to & 0xff, ...values]));
     } else if (kind === 0x09) {
       const reply = Buffer.alloc(Math.max(10, this.statusLength));
       Buffer.from([0x09, 0x01, tid, seq, src >>> 8, src & 0xff, this.on ? 1 : 0, this.level, 0x19, 0x00]).copy(reply);

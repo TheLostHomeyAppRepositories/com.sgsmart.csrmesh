@@ -203,7 +203,6 @@
     "sg3NoNetwork": "Log in with your SG account in the SG LEDDim settings.",
     "sg3OtherHome": "The dimmer is not in the home fetched from your SG account.",
     "sg3NotSent": "Could not reach the dimmer. Try again.",
-    "sg3ThermostatReadOnly": "Cannot be changed from Homey yet. Change it on the thermostat.",
     "sg3ThermostatOtherHome": "The thermostat is not in the home fetched from your SG account."
   },
   "notification": {

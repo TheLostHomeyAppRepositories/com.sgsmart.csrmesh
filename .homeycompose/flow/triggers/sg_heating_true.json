@@ -1,0 +1,13 @@
+{
+  "title": {
+    "en": "Started heating",
+    "no": "Begynte å varme"
+  },
+  "args": [
+    {
+      "type": "device",
+      "name": "device",
+      "filter": "driver_id=sg_thermostat|sg3_thermostat"
+    }
+  ]
+}
