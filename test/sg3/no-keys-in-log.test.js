@@ -129,7 +129,7 @@ test('the lines say what the test needs to see (with detailed logging for the "i
   assert.match(text, /^status 0x0005 \(by itself\): off 30$/m);
   // The replies within 4 s of the command are held back; the local change
   // after it is passed on.
-  assert.match(text, /^link #1 up \d+ s, in \d+: to .*; since start: commands 1 \(acked 1\), status 1 \(other nodes 0, held back [12]\), drops 0, links 1, unreadable 0$/m);
+  assert.match(text, /^link #1 up \d+ s, in \d+: to .*; since start: commands 1 \(acked 1\), status 1 \(other nodes 0, held back [12]\), other SG 0, drops 0, links 1, unreadable 0$/m);
   assert.match(text, /^link #1 dropped after \d+\.\d s: remote hang-up; in \d+: to 0x7f80 \(Homey\) \d+, 0xffff 1; /m);
   assertClean(lines);
 });

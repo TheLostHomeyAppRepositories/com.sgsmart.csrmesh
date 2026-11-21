@@ -8,7 +8,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { HOMEY_FIRST, HOMEY_LAST, STATUS_BLOCK_MS, Sg3Controller } = require('../../lib/sg3/controller');
+const {
+  HOMEY_FIRST, HOMEY_LAST, OTHER_LINES, STATUS_BLOCK_MS, Sg3Controller,
+} = require('../../lib/sg3/controller');
 const { Sg3Bridge, advertAge, proxyCandidates } = require('../../lib/sg3/bridge');
 const proxy = require('../../lib/sigmesh/proxy');
 const { SimulatedSgNode } = require('./simulated-node');
@@ -259,6 +261,62 @@ test('without detailed logging: no "in: first" and no "proxy in:" lines, and the
   await controller.stop();
   assert.ok(!logs.some((line) => line.startsWith('in: first') || line.startsWith('proxy in:')), logs.join('\n'));
   assert.ok(logs.some((line) => line.startsWith('link #1 closed after ') && line.includes('; in ')), logs.join('\n'));
+});
+
+// An SG message of 55 bytes after the opcode, of kind 0x2E, the rest made up.
+const otherKind = () => {
+  const parameters = Buffer.alloc(55, 0x5a);
+  parameters[0] = 0x2e;
+  return parameters;
+};
+const otherLines = (logs) => logs.filter((line) => line.startsWith('in: SG kind'));
+const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+test('an SG message to 0xFFFF that is not a dimmer\'s status: without detailed logging a line for the first of each sender and kind, with its length and never its content; not a status; counted', async () => {
+  const { homey, controller, behind, proxyNode, logs } = setUp();
+  const statuses = [];
+  controller.on('status', (status) => statuses.push(status));
+  await controller.setLevel(0x0005, 25);
+  homey.devices.push(0x0003);
+  behind.publish(0xffff, otherKind());
+  behind.publish(0xffff, otherKind());
+  proxyNode.publish(0xffff, Buffer.from([0x41, 0x01]));
+  await settle();
+  assert.deepEqual(otherLines(logs), [
+    'in: SG kind 0x2e, 55 byte(s), from 0x0005 to 0xffff',
+    'in: SG kind 0x41, 2 byte(s), from 0x0003 (in Homey) to 0xffff',
+  ]);
+  assert.ok(!logs.some((line) => line.includes('5a5a')), 'never its content');
+  assert.ok(statuses.every((status) => status.kind !== 0x2e && status.kind !== 0x41), 'not passed on as a status');
+  controller.logSummary();
+  assert.ok(logs.some((line) => line.includes('(other nodes 0, held back ') && line.includes('), other SG 3, drops ')), logs.join('\n'));
+  await controller.stop();
+});
+
+test('with detailed logging every one gets its line, also one without a kind; a dimmer\'s status gets none', async () => {
+  const { controller, behind, logs } = setUp({ detailed: () => true });
+  await controller.setLevel(0x0005, 25);
+  behind.publish(0xffff, otherKind());
+  behind.publish(0xffff, otherKind());
+  behind.publish(0xffff, Buffer.alloc(0));
+  behind.localChange({ on: true, level: 30 });
+  await settle();
+  assert.deepEqual(otherLines(logs), [
+    'in: SG kind 0x2e, 55 byte(s), from 0x0005 to 0xffff',
+    'in: SG kind 0x2e, 55 byte(s), from 0x0005 to 0xffff',
+    'in: SG kind none, 0 byte(s), from 0x0005 to 0xffff',
+  ]);
+  await controller.stop();
+});
+
+test('without detailed logging at most OTHER_LINES of these lines on a link', async () => {
+  const { controller, behind, logs } = setUp();
+  await controller.setLevel(0x0005, 25);
+  for (let kind = 0x40; kind <= 0x40 + OTHER_LINES; kind += 1) behind.publish(0xffff, Buffer.from([kind, 0x00]));
+  await settle();
+  assert.equal(OTHER_LINES, 8);
+  assert.deepEqual(otherLines(logs), Array.from({ length: OTHER_LINES }, (_, i) => `in: SG kind 0x${(0x40 + i).toString(16)}, 2 byte(s), from 0x0005 to 0xffff`));
+  await controller.stop();
 });
 
 test('the scan goes through the app\'s queue of scans when the app has one', async () => {
