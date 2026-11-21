@@ -209,7 +209,7 @@ test('the Flow cards: in the manifest with both languages, and the driver answer
     conditions: ['sg_heat_preset_is', 'sg_heating_is', 'sg_window_open_is'],
     actions: ['sg_heat_preset_set'],
   });
-  assert.deepEqual(JSON.parse(read('drivers/sg_thermostat/driver.flow.compose.json')), { triggers: [], conditions: [], actions: [] });
+  assert.ok(!fs.existsSync(path.join(ROOT, 'drivers/sg_thermostat/driver.flow.compose.json')), 'none of its own');
   for (const c of Object.values(cards).flat()) {
     for (const field of ['title', 'titleFormatted', 'hint']) {
       if (c[field]) assert.deepEqual(Object.keys(c[field]).sort(), ['en', 'no'], `${c.id} ${field}`);

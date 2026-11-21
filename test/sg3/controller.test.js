@@ -332,11 +332,11 @@ test('a HeatReg Smart 3.0\'s status to 0xFFFF goes out as "thermostat", in its s
   behind.publish(0xffff, thermostatKind());
   await settle();
   assert.deepEqual(thermostats, [{
-    node: 0x0005, room: 21.5, floor: 23.2, setPoint: 22, eco: 0, comfort: 0, min: 0, protection: 0, sensor: 'floor', minActive: false, heating: true, on: true, window: false,
+    node: 0x0005, room: 21.5, floor: 23.2, setPoint: 22, eco: 0, comfort: 0, min: 0, protection: 0, lock: false, sensor: 'floor', minActive: false, heating: true, on: true, window: false,
   }]);
   assert.ok(statuses.every((status) => status.node !== 0x0005 || status.kind !== 0x2e));
   assert.deepEqual(otherLines(logs), []);
-  assert.ok(logs.includes('thermostat 0x0005: room 21.5, floor 23.2, set point 22.0, sensor floor, heating, on'), logs.join('\n'));
+  assert.ok(logs.includes('thermostat 0x0005: room 21.5, floor 23.2, set point 22.0, sensor floor, heating, on, lock off'), logs.join('\n'));
   controller.logSummary();
   assert.ok(logs.some((line) => line.includes('), thermostat 1, other SG 0, drops ')), logs.join('\n'));
   await controller.stop();

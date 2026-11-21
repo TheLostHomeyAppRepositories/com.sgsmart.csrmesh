@@ -36,7 +36,7 @@ const APP_KEY = 'f0e1d2c3b4a5968778695a4b3c2d1e0f';
 // assumed to be, the rest made up.
 function thermostatStatus({
   room = [0x15, 5], floor = [0x17, 2], setPoint = [0x16, 0], eco = [0x10, 0], comfort = [0x15, 0], min = [0x05, 0],
-  protection = 0, sensorBits = 2, minActive = false, heating = true, on = true, window = false,
+  protection = 0, lock = false, sensorBits = 2, minActive = false, heating = true, on = true, window = false,
 } = {}) {
   const parameters = Buffer.alloc(55, 0x00);
   parameters[0] = 0x2e;
@@ -47,6 +47,7 @@ function thermostatStatus({
   parameters.set(comfort, 38);
   parameters.set(min, 40);
   parameters[47] = protection;
+  parameters[48] = lock ? 0x04 : 0;
   parameters[49] = (sensorBits << 1) | (minActive ? 0x10 : 0);
   parameters[50] = (heating ? 2 : 0) | (on ? 4 : 0) | (window ? 0x10 : 0);
   return parameters;
@@ -56,14 +57,14 @@ const PRESET_TEMPERATURES = { eco: 16, comfort: 21, min: 5 };
 test('the status of kind 0x2E: the temperatures, the set point and the presets, with the sign in bit 7 and the tenths in the second byte; the sensor, min in use, the protection byte, heating, on and the open window', () => {
   assert.equal(sg.KIND_THERMOSTAT_STATUS, 0x2e);
   assert.deepEqual(sg.parseThermostatStatus(thermostatStatus()), {
-    room: 21.5, floor: 23.2, setPoint: 22, ...PRESET_TEMPERATURES, protection: 0, sensor: 'floor', minActive: false, heating: true, on: true, window: false,
+    room: 21.5, floor: 23.2, setPoint: 22, ...PRESET_TEMPERATURES, protection: 0, lock: false, sensor: 'floor', minActive: false, heating: true, on: true, window: false,
   });
   const cold = sg.parseThermostatStatus(thermostatStatus({
     room: [0x80, 0], floor: [0x82, 3], setPoint: [0x05, 0], eco: [0x10, 5], comfort: [0x16, 5], min: [0x07, 0],
-    protection: 0x84, sensorBits: 1, minActive: true, heating: false, on: false, window: true,
+    protection: 0x84, lock: true, sensorBits: 1, minActive: true, heating: false, on: false, window: true,
   }));
   assert.deepEqual(cold, {
-    room: 0, floor: -2.3, setPoint: 5, eco: 16.5, comfort: 22.5, min: 7, protection: 0x84, sensor: 'room', minActive: true, heating: false, on: false, window: true,
+    room: 0, floor: -2.3, setPoint: 5, eco: 16.5, comfort: 22.5, min: 7, protection: 0x84, lock: true, sensor: 'room', minActive: true, heating: false, on: false, window: true,
   });
   assert.equal(sg.parseThermostatStatus(thermostatStatus({ sensorBits: 3 })).sensor, 'roomFloor');
   assert.equal(sg.parseThermostatStatus(thermostatStatus({ sensorBits: 0 })).sensor, null);
@@ -237,7 +238,7 @@ test('the device shows its status: the floor as the main temperature with the fl
     sg_connection: 'device.connection.indirect',
   });
   assert.ok(device.logs.includes('status: room 21.5, floor 23.2, set point 22.0, eco 16.0, comfort 21.0, min 5.0, sensor floor, heating, on, '
-    + 'window not open, protection 0x00 (first since start)'), device.logs.join('\n'));
+    + 'window not open, protection 0x00, lock off (first since start)'), device.logs.join('\n'));
   status();
   assert.equal(device.logs.filter((line) => line.startsWith('status: ')).length, 1, 'logged again only when it changes');
   controller.emit('thermostat', { node: 0x5a02, ...sg.parseThermostatStatus(thermostatStatus({ on: false })) });
@@ -378,14 +379,18 @@ test('before its first status since start, a change that does not get through sh
 
 // ---- the preset, the faults, the window, the signal
 
-test('the preset in use: none when off, min when the thermostat says so, else comfort or eco by the set point; when both have it, the one chosen last, else comfort', async () => {
+test('the preset in use: none when off, min when the thermostat says so and the set point is the min temperature, else comfort or eco by the set point; when both have it, the one chosen last, else comfort', async () => {
   const { device, status, release } = await thermostat();
   status({ setPoint: [0x15, 0] });
   assert.equal(device.getCapabilityValue('sg_heat_preset'), 'comfort');
   status({ setPoint: [0x10, 0] });
   assert.equal(device.getCapabilityValue('sg_heat_preset'), 'eco');
+  status({ setPoint: [0x05, 0], minActive: true });
+  assert.equal(device.getCapabilityValue('sg_heat_preset'), 'min', 'the flag, and the set point is the min temperature');
   status({ setPoint: [0x10, 0], minActive: true });
-  assert.equal(device.getCapabilityValue('sg_heat_preset'), 'min');
+  assert.equal(device.getCapabilityValue('sg_heat_preset'), 'eco', 'the flag left after a set point set directly: not min');
+  status({ setPoint: [0x05, 0] });
+  assert.equal(device.getCapabilityValue('sg_heat_preset'), null, 'the min temperature without the flag: not min');
   status({ setPoint: [0x16, 0] });
   assert.equal(device.getCapabilityValue('sg_heat_preset'), null, 'neither has the set point');
   status({ setPoint: [0x15, 0], on: false });
@@ -424,7 +429,12 @@ test('a refused preset: logged as refused, not sent again, and what the thermost
   await release();
   assert.deepEqual(sent, [[0x5a01, { preset: 'min' }]]);
   assert.deepEqual([device.getCapabilityValue('sg_heat_preset'), device.getCapabilityValue('target_temperature')], ['comfort', 21]);
-  assert.ok(device.logs.includes('preset min from Homey: refused by the thermostat, not sent again'));
+  assert.ok(device.logs.includes('preset min from Homey: refused by the thermostat (lock off in its last status), not sent again'));
+  status({ setPoint: [0x15, 0], lock: true });
+  assert.ok(device.logs.some((line) => line.startsWith('status: ') && line.endsWith(', lock on')), 'the lock in the status line');
+  await device.listened.sg_heat_preset('min');
+  await release();
+  assert.ok(device.logs.includes('preset min from Homey: refused by the thermostat (lock on in its last status), not sent again'));
   controller.answer = () => ({ acked: true, segments: 2, ack: null });
   await device.listened.sg_heat_preset('eco');
   await release();
@@ -648,8 +658,7 @@ test('the Flow cards are the app\'s, with the ids they had, for HeatReg Smart an
     { en: '!{{Is|Is not}} heating', no: '!{{Varmer|Varmer ikke}}' },
   ]);
   assert.ok(app.flow.triggers.some((card) => card.id === 'sg_heating_true') && app.flow.conditions.some((card) => card.id === 'sg_heating_is'));
-  const own = JSON.parse(read('drivers/sg_thermostat/driver.flow.compose.json'));
-  assert.deepEqual(own, { triggers: [], conditions: [], actions: [] });
+  assert.ok(!fs.existsSync(path.join(ROOT, 'drivers/sg_thermostat/driver.flow.compose.json')), 'none of its own');
   const shared = ['measure_temperature.floor_changed', 'measure_temperature.room_changed', 'sg_heat_preset_changed', 'sg_heating_true', 'sg_heating_false',
     'sg_window_open_true', 'sg_window_open_false', 'sg_floor_limit_true', 'sg_floor_limit_false', 'sg_heating_is', 'sg_window_open_is',
     'sg_heat_preset_is', 'sg_heat_preset_set'];
