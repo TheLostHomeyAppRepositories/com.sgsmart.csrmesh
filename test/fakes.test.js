@@ -253,6 +253,8 @@ async function add(run, driverId, entry, { settings = { passphrase: '1234' } } =
     homey: run.app.homey, store: entry.store, settings, data: entry.data, name: entry.name,
   });
   device.hasCapability = (capability) => driverId === 'sg_thermostat' || (entry.capabilities || ['onoff', 'dim']).includes(capability);
+  // Homey's capability listener, kept so a test can give it what the tile gives.
+  device.registerMultipleCapabilityListener = (capabilities, listener) => { device.listener = listener; };
   driver.devices.push(device);
   await device.onInit();
   return device;
@@ -584,6 +586,15 @@ test('a fake LEDDim Smart Push: listed by sg_push with the driver icon, turned o
   run.app.fakes.order('7F08 off');
   await runTimers(run.app.homey, 0);
   assert.equal(push.getCapabilityValue('onoff'), false);
+  // "On" from Homey after that, through the listener for onoff alone: it
+  // waits 800 ms for a level, sends on without one, and the Push comes on
+  // at the level it had (80).
+  push.logs.length = 0;
+  await push.listener({ onoff: true });
+  await runTimers(run.app.homey, 800, 2000, ...READ_BACK);
+  assert.ok(push.logs.some((line) => line.startsWith('command FF03 id=0x7f08 on level=0 ')), 'on, no level');
+  assert.equal(run.app.fakes.nodes.find((n) => n.meshId === 0x7f08).level, 80, 'the Push kept its level');
+  assert.deepEqual([push.getCapabilityValue('onoff'), push.getCapabilityValue('dim')], [true, 0.8]);
   const heard = run.app.fakes.bridge.heard.filter((m) => m.dst === 0x7f08).map((m) => m.opcode.toString(16));
   assert.ok(heard.includes('ff03') && heard.includes('ff04'));
   assert.ok(!heard.includes('ff33'), 'never its colour temperature');
