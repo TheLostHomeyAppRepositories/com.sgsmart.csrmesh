@@ -2084,6 +2084,27 @@ test('FF04 to a Gen4 device (prefix @G) has 00 00 after the location id, known b
   net.stop();
 });
 
+test('FF04 to a Push: 00 00 after the location id for @GK (Gen4), by its name, the device added here or its type 2012; @MK, @MU and @SK without', async () => {
+  const added = (meshId, prefix) => ({ getCsrMeshId: () => meshId, getStoreValue: (key) => (key === 'prefix' ? prefix : null) });
+  const app = networkApp([added(0x0311, '@GK'), added(0x0312, '@SK'), added(0x0313, '@MK')]);
+  app.account = { typeInNetwork: (meshId) => ({ 0x0314: 2012, 0x0315: 1012, 0x0316: 25 })[meshId] ?? null };
+  const csr = new CsrNetwork(app);
+  csr.handleFrame(nameFrom(0x0317, '@GK1A2B'));
+  await tick();
+  app.sent.length = 0;
+  for (const meshId of [0x0311, 0x0312, 0x0313, 0x0314, 0x0315, 0x0316, 0x0317]) await csr.requestStatus(meshId, LOC);
+  assert.deepEqual(app.sent.filter(({ plain }) => opOf(plain) === 0xff04).map(({ plain }) => [dstOf(plain), plain.subarray(4).toString('hex')]), [
+    [0x0311, '5a3c0000'], // added here as @GK
+    [0x0312, '5a3c'], // @SK: Gen3
+    [0x0313, '5a3c'], // @MK: Gen2
+    [0x0314, '5a3c0000'], // type 2012 in the account
+    [0x0315, '5a3c'], // type 1012
+    [0x0316, '5a3c'], // type 25 (@MU)
+    [0x0317, '5a3c0000'], // heard as @GK
+  ]);
+  csr.stop();
+});
+
 // ---- the frame's last byte (TTL), raw, in the EXT line (2.8.9)
 
 test('the bridge hands on the frame\'s last byte as ttl, and the EXT line shows it after loc; no new line, and none without it', () => {

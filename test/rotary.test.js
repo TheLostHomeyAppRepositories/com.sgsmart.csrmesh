@@ -18,8 +18,8 @@ const fake = require('./helpers/fake-homey');
 fake.install();
 
 const {
-  CSR_PRODUCTS, DIN_DIMMER_PREFIXES, DIN_ONOFF_PREFIXES, PILL_PREFIXES, PLUG_PREFIXES, ROTARY_PREFIXES, THERMOSTAT_PREFIXES,
-  csrDriverFor, csrProductForName,
+  CSR_PRODUCTS, DIN_DIMMER_PREFIXES, DIN_ONOFF_PREFIXES, PILL_PREFIXES, PLUG_PREFIXES, PUSH_PREFIXES, ROTARY_PREFIXES,
+  THERMOSTAT_PREFIXES, csrDriverFor, csrProductForName,
 } = require('../lib/sgProducts');
 const SGMeshDevice = require('../lib/SGDeviceBase');
 const SGCsrDevice = require('../lib/SGCsrDevice');
@@ -68,7 +68,7 @@ async function pairList(driver) {
 // The driver that adds a product, by its prefix: one driver per product.
 function expectedDriver(prefix) {
   const drivers = [
-    [ROTARY_PREFIXES, 'sg_mesh'], [PILL_PREFIXES, 'sg_pill'], [DIN_DIMMER_PREFIXES, 'sg_din'],
+    [ROTARY_PREFIXES, 'sg_mesh'], [PILL_PREFIXES, 'sg_pill'], [DIN_DIMMER_PREFIXES, 'sg_din'], [PUSH_PREFIXES, 'sg_push'],
     [PLUG_PREFIXES, 'sg_plug'], [DIN_ONOFF_PREFIXES, 'sg_plug'], [THERMOSTAT_PREFIXES, 'sg_thermostat'],
   ];
   const found = drivers.find(([prefixes]) => prefixes.includes(prefix));
@@ -268,18 +268,25 @@ test('sg_mesh: a failed scan moves on too, and the list says "Search failed"', a
   assert.ok(driver.logs.includes('pair: list_devices: error failed'));
 });
 
-test('no rotary dimmer, but a Pill and a Push: the list says so instead of the general advice', async () => {
-  const { driver } = meshDriver([adv('d', '@SC7A8B'), adv('e', '@GK9C0D')], [node(0x0126, '@SC7A8B')]);
+test('no rotary dimmer, but a Pill and a Floor: the list says so instead of the general advice', async () => {
+  const { driver } = meshDriver([adv('d', '@SC7A8B'), adv('e', '@GF9C0D')], [node(0x0126, '@SC7A8B')]);
   const note = 'pair.found.noDimmerButPill {"products":"LEDDim Smart Pill"} '
-    + 'pair.found.notYet {"products":"LEDDim Smart Push"}';
+    + 'pair.found.notYet {"products":"LEDDim Smart Floor"}';
   await assert.rejects(pairList(driver), { message: note });
   assert.ok(driver.logs.includes('pair: list_devices: error none'));
 });
 
-test('no rotary dimmer, only a Push: no rotary dimmers found, and the Push cannot be added yet', async () => {
-  const { driver } = meshDriver([adv('e', '@GK9C0D')], [node(0x0127, '@GK9C0D')]);
+test('no rotary dimmer, only a Floor: no rotary dimmers found, and the Floor cannot be added yet', async () => {
+  const { driver } = meshDriver([adv('e', '@GF9C0D')], [node(0x0127, '@GF9C0D')]);
   await assert.rejects(pairList(driver),
-    { message: 'pair.found.noDimmer pair.found.notYet {"products":"LEDDim Smart Push"}' });
+    { message: 'pair.found.noDimmer pair.found.notYet {"products":"LEDDim Smart Floor"}' });
+});
+
+test('no rotary dimmer, a Pill and a Push: none found, and where each is added', async () => {
+  const { driver } = meshDriver([adv('d', '@SC7A8B'), adv('e', '@GK9C0D')], [node(0x0126, '@SC7A8B'), node(0x0127, '@GK9C0D')]);
+  const note = 'pair.found.noDimmer pair.found.goToPill {"products":"LEDDim Smart Pill"} '
+    + 'pair.found.goToPush {"products":"LEDDim Smart Push"}';
+  await assert.rejects(pairList(driver), { message: note });
 });
 
 test('all dimmers added and a Pill found: an empty list, so Homey says itself that none is new; a later dimmer added is not listed', async () => {

@@ -22,6 +22,7 @@ const MeshBridge = require('../lib/MeshBridge');
 const SGCsrDevice = require('../lib/SGCsrDevice');
 const SGMeshDevice = require('../lib/SGDeviceBase');
 const SGPlugDevice = require('../drivers/sg_plug/device');
+const SGPushDevice = require('../drivers/sg_push/device');
 const SGThermostatDevice = require('../lib/SGThermostatDevice');
 const { loadFakes } = require('../lib/fakeDevices');
 const { REFUSED } = require('../lib/fake/bridge');
@@ -192,14 +193,16 @@ test('nothing the app does sends them: names, statuses, a thermostat read and se
   const light = device(SGCsrDevice, { meshId: 0x0123, prefix: '@SW', kind: 'dimmable', tunableWhite: true }, true);
   const onOff = device(SGCsrDevice, { meshId: 0x0124, prefix: '@SE', kind: 'onoff' }, false);
   const plug = device(SGPlugDevice, { meshId: 0x0125, prefix: '@GB', kind: 'onoff' }, false);
+  // A TW Push (sg_push): on, off and levels, never its colour temperature.
+  const push = device(SGPushDevice, { meshId: 0x0127, prefix: '@GK', kind: 'dimmable', tunableWhite: true }, true);
   // A thermostat added in Homey.
   const thermostat = new SGThermostatDevice({
     homey: app.homey, store: { meshId: 0x0126, prefix: '@MT', kind: 'thermostat', locationId: LOC },
     settings: { passphrase: 'test-only-pass' }, data: { id: '@MT7A8B' }, name: 'thermostat',
   });
   thermostat.hasCapability = () => true;
-  app._devices = () => [light, onOff, plug, thermostat];
-  for (const d of [light, onOff, plug, thermostat]) await d.onInit();
+  app._devices = () => [light, onOff, plug, push, thermostat];
+  for (const d of [light, onOff, plug, push, thermostat]) await d.onInit();
 
   // FF10 waits between its variants: the timers below let it go on.
   const names = app.csr.requestNames({ listenMs: 1000 });
@@ -212,6 +215,7 @@ test('nothing the app does sends them: names, statuses, a thermostat read and se
   await thermostat._power(false, 'onoff');
   for (const preset of ['comfort', 'eco', 'min']) await thermostat._preset(preset);
   for (const level of [0, 1, 40, 100]) light._request(level);
+  for (const level of [0, 30, 80, 100]) push._request(level);
   onOff._request(100);
   onOff._request(0);
   plug._request(100);
@@ -248,6 +252,12 @@ test('nothing the app does sends them: names, statuses, a thermostat read and se
   for (const expected of ['ff10', 'ff04', 'ffff', 'ff3c', 'ff03', 'ff3e', 'ff42', '73a0', '73cc']) assert.ok(opcodes.has(expected), `${expected} was sent`);
   assert.deepEqual(sent.filter((plain) => NEVER.includes(opcodeOf(plain))).map(opcodeOf), []);
   assert.ok(sent.length >= 15, `${sent.length} sent`);
+  // The Push: FF03 only, each with white 0 (its colour temperature is left
+  // as it is: assumed, not tried).
+  const toPush = sent.filter((plain) => plain.readUInt16LE(0) === 0x0127);
+  assert.ok(toPush.some((plain) => opcodeOf(plain) === 'ff03'), 'the Push was set');
+  for (const plain of toPush.filter((p) => opcodeOf(p) === 'ff03')) assert.equal(plain[10], 0, `white 0: ${plain.toString('hex')}`);
+  assert.deepEqual([...new Set(toPush.map(opcodeOf))].filter((op) => !['ff03', 'ff04'].includes(op)), [], 'only FF03 and FF04 to the Push');
 });
 
 test('an FF0A that comes in is only logged: nothing goes out as an answer', async () => {

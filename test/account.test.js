@@ -746,6 +746,15 @@ test('pairing: the account\'s devices for a driver that did not answer are named
   app.account._state.homes[0].devices.push({ meshId: 0x8007, type: 1002 }, { meshId: 0x8008, type: 2004 });
   const driver = pairDriver(app);
   assert.deepEqual(quietInAccount(driver, 'sg_pill'), ['pair.account.device {"product":"LEDDim Smart Pill","address":"8008"}']);
+  assert.deepEqual(quietInAccount(driver, 'sg_push'), [], 'no Push in the account yet');
+  app.account._state.homes[0].devices.push({ meshId: 0x8009, type: 1012 }, { meshId: 0x800a, type: 2012 }, { meshId: 0x800b, type: 12 }, { meshId: 0x800c, type: 25 });
+  assert.deepEqual(quietInAccount(driver, 'sg_push'), [
+    'pair.account.device {"product":"LEDDim Smart Push","address":"8009"}',
+    'pair.account.device {"product":"LEDDim Smart Push","address":"800A"}',
+    'pair.account.device {"product":"LEDDim Smart Push","address":"800B"}',
+    'pair.account.device {"product":"TW LEDDim Smart Push","address":"800C"}',
+  ], 'a Push that did not answer is named in sg_push');
+  assert.deepEqual(quietInAccount(driver, 'sg_pill'), ['pair.account.device {"product":"LEDDim Smart Pill","address":"8008"}'], 'and not in sg_pill');
   assert.deepEqual(quietInAccount(driver, 'sg_plug'), ['pair.account.device {"product":"Smart Plug","address":"8004"}'], 'the recalled plug is left out');
   assert.deepEqual(quietInAccount(driver, 'sg_mesh', [0x8001]), ['pair.account.device {"product":"LEDDim Smart","address":"8002"}'],
     'the first generation dimmer the scan saw, and the rotary dimmer that answered, are not named');

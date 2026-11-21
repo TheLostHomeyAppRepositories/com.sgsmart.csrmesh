@@ -22,6 +22,7 @@ const SGCsrDevice = require('../lib/SGCsrDevice');
 const SGMeshDriver = require('../drivers/sg_mesh/driver');
 const SGPillDriver = require('../drivers/sg_pill/driver');
 const SGPlugDriver = require('../drivers/sg_plug/driver');
+const SGPushDriver = require('../drivers/sg_push/driver');
 const SGPlugDevice = require('../drivers/sg_plug/device');
 const SGThermostatDriver = require('../drivers/sg_thermostat/driver');
 const SGThermostatDevice = require('../lib/SGThermostatDevice');
@@ -195,7 +196,7 @@ function fakeRun() {
   app.csr = new CsrNetwork(app);
   app.fakes = loadFakes(app, { env: { DEBUG: '1' } });
   for (const [id, Driver] of [['sg_pill', SGPillDriver], ['sg_mesh', SGMeshDriver], ['sg_plug', SGPlugDriver],
-    ['sg_thermostat', SGThermostatDriver]]) {
+    ['sg_push', SGPushDriver], ['sg_thermostat', SGThermostatDriver]]) {
     const driver = new Driver({ homey: app.homey });
     driver.id = id;
     driver.devices = [];
@@ -554,6 +555,39 @@ test('a fake Smart Plug and Smart Socket: listed by sg_plug with their icons, tu
   run.app.fakes.order('7F06 off');
   await runTimers(run.app.homey, 0);
   assert.equal(socket.getCapabilityValue('onoff'), false, 'turned off at the socket itself');
+  assert.deepEqual(run.realSends, []);
+  assert.deepEqual(run.bluetooth, []);
+});
+
+test('a fake LEDDim Smart Push: listed by sg_push with the driver icon, turned on and off and dimmed with an answer after 2 s, and on, off and level on order, never on the real radio', async () => {
+  const run = fakeRun();
+  const listed = await pair(run, 'sg_push');
+  assert.deepEqual(listed.map((d) => [d.name, d.data.id, d.store.meshId, d.icon, d.capabilities.join('+')]), [
+    ['FAKE LEDDim Smart Push E1F9', 'fake:@SKE1F9', 0x7f08, undefined, 'onoff+dim'],
+  ]);
+  assert.deepEqual((await pair(run, 'sg_pill')).map((d) => d.data.id), ['fake:@SC3B91', 'fake:@SE52C4'], 'not in sg_pill');
+  const push = await add(run, 'sg_push', listed[0]);
+  assert.ok(push instanceof SGCsrDevice);
+  push._request(30);
+  await runTimers(run.app.homey, 2000, ...READ_BACK);
+  assert.deepEqual([push.getCapabilityValue('onoff'), push.getCapabilityValue('dim')], [true, 0.3]);
+  push._request(0);
+  await runTimers(run.app.homey, 2000, ...READ_BACK);
+  assert.equal(push.getCapabilityValue('onoff'), false);
+  // At the Push itself.
+  run.app.fakes.order('7F08 on');
+  await runTimers(run.app.homey, 0);
+  assert.equal(push.getCapabilityValue('onoff'), true);
+  run.app.fakes.order('@SKE1F9 level 80');
+  await runTimers(run.app.homey, 0);
+  assert.equal(push.getCapabilityValue('dim'), 0.8);
+  run.app.fakes.order('7F08 off');
+  await runTimers(run.app.homey, 0);
+  assert.equal(push.getCapabilityValue('onoff'), false);
+  const heard = run.app.fakes.bridge.heard.filter((m) => m.dst === 0x7f08).map((m) => m.opcode.toString(16));
+  assert.ok(heard.includes('ff03') && heard.includes('ff04'));
+  assert.ok(!heard.includes('ff33'), 'never its colour temperature');
+  assert.deepEqual(run.app.fakes.bridge.refused, []);
   assert.deepEqual(run.realSends, []);
   assert.deepEqual(run.bluetooth, []);
 });

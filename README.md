@@ -19,11 +19,12 @@ SG.
 | `sg_group`: Group Gen1 | One tile for the first generation dimmers you tick when you add it, or later under repair. It passes its level on to each dimmer, since these dimmers do not act on a group-addressed message (tested). The tile follows the dimmers' status. | `onoff`, `dim` |
 | `sg_pill`: LEDDim Smart Pill | The Pill family (`@MC`, `@SC`, `@GC`, Micro, TW and ON-OFF, not DALI). Found by the same search; experimental. | `onoff` and `dim`, the ON-OFF Pills `onoff` |
 | `sg_din`: LEDDim Smart DIN | The DIN dimmers (`@MR`, `@SR`, `@GR`, DIN 1000 `@MM`, `@SM` and TW `@SH`, `@GH`). Found by the same search; experimental. | `onoff`, `dim` |
+| `sg_push`: LEDDim Smart Push | LEDDim Smart Push (`@MK`) and TW LEDDim Smart Push (`@MU`, `@SK`, `@GK`). Found by the same search; experimental, not tried with a device. On, off and the level, not the colour temperature. | `onoff`, `dim` |
 | `sg_plug`: Smart Plug and Smart Socket | Smart Plug (`@GP`), Smart Socket (`@GB`) and Smart DIN 3600 (`@GM`). Found by the same search; experimental. Flow cards to turn it off in, or on for, a number of minutes, to cancel that countdown, and to check or react when it runs or is done; Homey counts the minutes, not the plug. Smart Plug `@MP` and `@SP` are recalled by SG and are not offered; one added before shows a warning and can still be turned off. | `onoff` |
 | `sg_thermostat`: HeatReg Smart | HeatReg Smart (`@MT`, `@ST`). Found by the same search; experimental. Shows the room and floor temperature, the set point, the preset, heating, the open window function, the floor limit and faults. With "Control from Homey" on (the default) Homey can set it on and off, the set point and the preset. | `target_temperature`, `measure_temperature`, the floor temperature, `onoff`, `thermostat_mode`, preset, heating, `measure_power`, `alarm_problem`, open window, floor limit |
 | `sg3_dimmer`: LEDDim Smart 3.0 | LEDDim Smart 3.0 (tested) and LEDDim Smart 2-pole 3.0 (experimental). Needs the login with your SG account. | `onoff`, `dim`, signal to Homey and link |
 
-Other SG products, such as Push, Floor and Pill DALI, are found and logged, but
+Other SG products, such as Floor and Pill DALI, are found and logged, but
 cannot be added yet. Other SG Smart 3.0 products, among them LEDDim Smart DIN
 2-pole 3.0, are not supported yet.
 

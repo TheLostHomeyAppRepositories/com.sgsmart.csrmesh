@@ -47,8 +47,8 @@ test('the DIN dimmers (DIN, DIN 1000, also TW) are added with sg_din, Smart DIN 
   // By their type in the SG account, as a device that did not answer is named.
   for (const type of [5, 1005, 2005, 51, 1051, 1060, 2060]) assert.equal(driverForType(type), 'sg_din', `type ${type}`);
   assert.equal(driverForType(2008), 'sg_plug');
-  // Still not added: Pill DALI, Push, Floor, Ceiling, a Color Controller.
-  for (const prefix of ['@GY', '@SK', '@SF', '@SQ', '@SG']) assert.equal(csrDriverFor(csrProductForName(`${prefix}1A2B`)), null, prefix);
+  // Still not added: Pill DALI, Floor, Ceiling, a Color Controller.
+  for (const prefix of ['@GY', '@SF', '@SQ', '@SG']) assert.equal(csrDriverFor(csrProductForName(`${prefix}1A2B`)), null, prefix);
 });
 
 test('sg_din: "LEDDim Smart DIN", a light with on/off and dim, the pairing of sg_pill, the network settings, the Pill\'s device class', () => {
