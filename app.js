@@ -725,7 +725,12 @@ class SGSmartApp extends Homey.App {
   // Whether Homey minds two at once is not tried.
   bleDiscover(...args) {
     const before = this._sg3 && this._bleScan ? this._bleScan : null;
-    const scan = () => this.homey.ble.discover(...args);
+    // What every scan saw goes to the 3.0 controller too, for the signal of
+    // HeatReg Smart 3.0 (lib/sg3/controller.js, noteAdverts).
+    const scan = () => Promise.resolve(this.homey.ble.discover(...args)).then((advertisements) => {
+      if (this._sg3 && typeof this._sg3.noteAdverts === 'function') this._sg3.noteAdverts(advertisements);
+      return advertisements;
+    });
     const run = before ? this._waitAtMost(before, SCAN_QUEUE_WAIT_MS).then(scan) : scan();
     this._bleScan = Promise.resolve(run).catch(() => {});
     return run;

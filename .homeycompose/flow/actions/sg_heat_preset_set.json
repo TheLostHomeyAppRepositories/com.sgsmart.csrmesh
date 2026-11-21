@@ -1,0 +1,48 @@
+{
+  "title": {
+    "en": "Choose the preset ...",
+    "no": "Velg forhåndsinnstillingen ..."
+  },
+  "titleFormatted": {
+    "en": "Choose the preset [[preset]]",
+    "no": "Velg forhåndsinnstillingen [[preset]]"
+  },
+  "args": [
+    {
+      "type": "device",
+      "name": "device",
+      "filter": "driver_id=sg_thermostat|sg3_thermostat"
+    },
+    {
+      "type": "dropdown",
+      "name": "preset",
+      "title": {
+        "en": "Preset",
+        "no": "Forhåndsinnstilling"
+      },
+      "values": [
+        {
+          "id": "comfort",
+          "label": {
+            "en": "Comfort",
+            "no": "Komfort"
+          }
+        },
+        {
+          "id": "eco",
+          "label": {
+            "en": "Eco",
+            "no": "Eco"
+          }
+        },
+        {
+          "id": "min",
+          "label": {
+            "en": "Min",
+            "no": "Min"
+          }
+        }
+      ]
+    }
+  ]
+}

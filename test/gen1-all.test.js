@@ -404,7 +404,7 @@ test('the card corrects an older send only while it is the dimmer\'s newest wish
   }
 });
 
-test('the card in the manifest: the level as 0 to 100 %, in English and Norwegian, and no other app card', () => {
+test('the card in the manifest: the level as 0 to 100 %, in English and Norwegian, and the only other app action the thermostats\' preset', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'));
   const byId = Object.fromEntries(((manifest.flow || {}).actions || []).map((card) => [card.id, card]));
   for (const id of ['gen1_all_level']) {
@@ -415,7 +415,8 @@ test('the card in the manifest: the level as 0 to 100 %, in English and Norwegia
   const [level] = byId.gen1_all_level.args;
   assert.deepEqual([level.type, level.name, level.min, level.max, level.step, level.label, level.labelMultiplier, level.labelDecimals],
     ['range', 'level', 0, 1, 0.01, '%', 100, 0]);
-  assert.deepEqual(fs.readdirSync(path.join(ROOT, '.homeycompose', 'flow', 'actions')), ['gen1_all_level.json']);
+  // The other app action is the thermostats' (test/heatreg3.test.js).
+  assert.deepEqual(fs.readdirSync(path.join(ROOT, '.homeycompose', 'flow', 'actions')).sort(), ['gen1_all_level.json', 'sg_heat_preset_set.json']);
   for (const lang of ['en', 'no']) {
     const texts = JSON.parse(fs.readFileSync(path.join(ROOT, 'locales', `${lang}.json`), 'utf8')).flow.gen1All;
     assert.deepEqual(Object.keys(texts).sort(), ['homes', 'keys', 'none'], lang);

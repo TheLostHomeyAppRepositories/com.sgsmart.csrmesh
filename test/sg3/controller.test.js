@@ -332,7 +332,7 @@ test('a HeatReg Smart 3.0\'s status to 0xFFFF goes out as "thermostat", in its s
   behind.publish(0xffff, thermostatKind());
   await settle();
   assert.deepEqual(thermostats, [{
-    node: 0x0005, room: 21.5, floor: 23.2, setPoint: 22, sensor: 'floor', heating: true, on: true,
+    node: 0x0005, room: 21.5, floor: 23.2, setPoint: 22, eco: 0, comfort: 0, min: 0, protection: 0, sensor: 'floor', minActive: false, heating: true, on: true, window: false,
   }]);
   assert.ok(statuses.every((status) => status.node !== 0x0005 || status.kind !== 0x2e));
   assert.deepEqual(otherLines(logs), []);
@@ -399,6 +399,69 @@ for (const [how, why] of [['none', 'none comes'], ['otherAddress', 'it names ano
     await controller.stop();
   });
 }
+
+test('HeatReg Smart 3.0 a preset: 0x08 in 2 segments, acknowledged; refused when the thermostat says so, not sent again', async () => {
+  const { controller, behind, logs } = thermostatSetUp('yes');
+  const eco = await controller.setThermostat(0x0005, { preset: 'eco' });
+  assert.deepEqual([eco.acked, eco.segments, eco.ack.values, eco.ack.refused], [true, 2, [0], false]);
+  assert.equal(behind.preset, 'eco');
+  behind.thermostatAck = 'refused';
+  const min = await controller.setThermostat(0x0005, { preset: 'min' });
+  assert.deepEqual([min.ack.refused, behind.preset], [true, 'eco']);
+  assert.equal(behind.received.filter((message) => message.kind === 0x08).length, 2, 'once each');
+  assert.ok(logs.some((line) => line.startsWith('0x0005 thermostat preset eco to 0x0005 on link #1: 2 segment(s)') && /; acknowledged by the thermostat after \d+\.\d s$/.test(line)), logs.join('\n'));
+  assert.ok(logs.some((line) => line.startsWith('0x0005 thermostat preset min to 0x0005') && /; refused by the thermostat after \d+\.\d s, not sent again$/.test(line)), logs.join('\n'));
+  await controller.stop();
+});
+
+// An advertisement of a node of this network with manufacturer data for
+// 0x0EE8: its address at byte 8 (low byte first) and its type byte at 18.
+function makerAdvert({ address = 0x0005, typeByte = 0xb4, rssi = -70, networkId = NETWORK_ID, uuid = 'made-up-node' } = {}) {
+  const data = Buffer.alloc(29, 0x5a);
+  data.writeUInt16LE(0x0ee8, 0);
+  data.writeUInt16LE(address, 8);
+  data[18] = typeByte;
+  return {
+    uuid,
+    rssi,
+    serviceData: [{ uuid: '00001828-0000-1000-8000-00805f9b34fb', data: Buffer.concat([Buffer.from([0x00]), Buffer.from(networkId, 'hex')]) }],
+    manufacturerData: data,
+  };
+}
+
+test('the nodes of this network in a scan, by address, type and signal, for HeatReg Smart 3.0\'s signal; another network\'s and a type not known here are not', () => {
+  const { controller } = setUp();
+  const seen = [];
+  controller.on('advert', (advert) => seen.push(advert));
+  controller.noteAdverts([
+    makerAdvert(),
+    makerAdvert({ address: 0x0003, typeByte: 0xa5, rssi: -58 }),
+    makerAdvert({ address: 0x0006, typeByte: 0x77 }),
+    makerAdvert({ networkId: '00112233445566ff' }),
+    { uuid: 'no-data', rssi: -40 },
+    null,
+  ]);
+  assert.deepEqual(seen, [
+    { address: 0x0005, type: 3021, rssi: -70, source: 'scan' },
+    { address: 0x0003, type: 3080, rssi: -58, source: 'scan' },
+  ]);
+  controller.noteAdverts([makerAdvert()], 'find');
+  assert.equal(seen[2].source, 'find');
+  controller.noteAdverts('not a list');
+  assert.equal(seen.length, 3);
+});
+
+test('a scan of the controller without the app\'s queue is noted; with the queue, the app notes it (app.js, bleDiscover)', async () => {
+  const { controller, homey } = setUp();
+  const seen = [];
+  controller.on('advert', (advert) => seen.push(advert));
+  homey.ble.discover = async () => [makerAdvert()];
+  await controller.discover();
+  assert.equal(seen.length, 1);
+  homey.app = { bleDiscover: async () => [makerAdvert()] };
+  await controller.discover();
+  assert.equal(seen.length, 1, 'not twice');
+});
 
 test('a dimmer\'s level is sent as before: only as many segments as it needs', async () => {
   const { controller, proxyNode } = setUp();

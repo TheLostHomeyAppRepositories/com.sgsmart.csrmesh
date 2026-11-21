@@ -11,8 +11,14 @@
     "measure_temperature.room",
     "onoff",
     "thermostat_mode",
+    "sg_heat_preset",
     "sg_heating",
-    "measure_power"
+    "measure_power",
+    "alarm_problem",
+    "sg_window_open",
+    "sg_floor_limit",
+    "measure_signal_strength",
+    "sg_connection"
   ],
   "capabilitiesOptions": {
     "target_temperature": {
@@ -33,6 +39,9 @@
         "no": "Romtemperatur"
       }
     },
+    "onoff": {
+      "uiQuickAction": true
+    },
     "thermostat_mode": {
       "uiComponent": null,
       "values": [
@@ -52,9 +61,6 @@
         }
       ]
     },
-    "measure_power": {
-      "approximated": true
-    },
     "sg_heating": {
       "titleTrue": {
         "en": "Heating",
@@ -63,6 +69,35 @@
       "titleFalse": {
         "en": "Not heating",
         "no": "Varmer ikke"
+      }
+    },
+    "measure_power": {
+      "approximated": true
+    },
+    "sg_window_open": {
+      "titleTrue": {
+        "en": "Active",
+        "no": "Aktiv"
+      },
+      "titleFalse": {
+        "en": "Not active",
+        "no": "Ikke aktiv"
+      }
+    },
+    "sg_floor_limit": {
+      "titleTrue": {
+        "en": "Reached",
+        "no": "Nådd"
+      },
+      "titleFalse": {
+        "en": "Not reached",
+        "no": "Ikke nådd"
+      }
+    },
+    "measure_signal_strength": {
+      "title": {
+        "en": "Signal to Homey",
+        "no": "Signal til Homey"
       }
     }
   },

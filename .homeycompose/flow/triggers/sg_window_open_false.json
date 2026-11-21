@@ -1,0 +1,13 @@
+{
+  "title": {
+    "en": "The open window function ended",
+    "no": "Åpent vindu-funksjonen er ferdig"
+  },
+  "args": [
+    {
+      "type": "device",
+      "name": "device",
+      "filter": "driver_id=sg_thermostat|sg3_thermostat"
+    }
+  ]
+}

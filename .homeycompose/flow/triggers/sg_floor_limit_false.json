@@ -1,0 +1,13 @@
+{
+  "title": {
+    "en": "Floor limit no longer reached",
+    "no": "Gulvgrensen er ikke lenger nådd"
+  },
+  "args": [
+    {
+      "type": "device",
+      "name": "device",
+      "filter": "driver_id=sg_thermostat|sg3_thermostat"
+    }
+  ]
+}

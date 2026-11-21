@@ -16,11 +16,12 @@
 // - answers a status request with a segmented 0x09 reply to the asker;
 // - publishes a 0x03 status to its group (statusGroup) after a local change;
 // - answers Generic OnOff Get (0x8201) with Generic OnOff Status (0x8204);
-// - as a HeatReg Smart 3.0 (thermostat): takes 0x18 (on, off) and 0x19 (the
-//   set point), and sends its acknowledgement to 0xFFFF as assumed in
-//   lib/sg3/protocol.js (parseThermostatAck); thermostatAck says how:
-//   'yes', 'none', 'otherAddress' (bytes 4 and 5 not the sender's) or
-//   'otherTid'. Every message it got is in received (kind, segmented).
+// - as a HeatReg Smart 3.0 (thermostat): takes 0x18 (on, off), 0x19 (the
+//   set point) and 0x08 (a preset), and sends its acknowledgement to 0xFFFF
+//   as assumed in lib/sg3/protocol.js (parseThermostatAck); thermostatAck
+//   says how: 'yes', 'none', 'otherAddress' (bytes 4 and 5 not the
+//   sender's), 'otherTid', or 'refused' (byte 1 is 2; a 0x08 is then not
+//   taken). Every message it got is in received (kind, segmented).
 //
 // With longPdus it sends every message in one unsegmented network PDU,
 // however long, as an SG Smart 3.0 dimmer does; notifyMax is the longest
@@ -206,15 +207,17 @@ class SimulatedSgNode {
         this.level = level;
       }
       this.events.push(`level ${level}`);
-    } else if (kind === 0x18 || kind === 0x19) {
-      const values = kind === 0x18 ? [p[5]] : [p[5], p[6]];
+    } else if (kind === 0x18 || kind === 0x19 || kind === 0x08) {
+      const values = kind === 0x19 ? [p[5], p[6]] : [p[5]];
+      const refused = kind === 0x08 && this.thermostatAck === 'refused';
       if (kind === 0x18) this.on = p[5] === 1;
-      else this.setPoint = p[5] + p[6] / 10;
-      this.events.push(kind === 0x18 ? `thermostat ${this.on ? 'on' : 'off'}` : `thermostat set point ${this.setPoint}`);
+      else if (kind === 0x19) this.setPoint = p[5] + p[6] / 10;
+      else if (!refused) this.preset = ['eco', 'comfort', 'min'][p[5]];
+      this.events.push({ 0x18: `thermostat ${this.on ? 'on' : 'off'}`, 0x19: `thermostat set point ${this.setPoint}`, 0x08: `thermostat preset ${refused ? 'refused' : this.preset}` }[kind]);
       if (this.thermostatAck === 'none') return;
       const to = this.thermostatAck === 'otherAddress' ? src ^ 0x0001 : src;
       const ackTid = this.thermostatAck === 'otherTid' ? (tid + 1) & 0xff : tid;
-      this.publish(0xffff, Buffer.from([kind, 0x01, ackTid, seq, to >>> 8, to & 0xff, ...values]));
+      this.publish(0xffff, Buffer.from([kind, refused ? 0x02 : 0x01, ackTid, seq, to >>> 8, to & 0xff, ...values]));
     } else if (kind === 0x09) {
       const reply = Buffer.alloc(Math.max(10, this.statusLength));
       Buffer.from([0x09, 0x01, tid, seq, src >>> 8, src & 0xff, this.on ? 1 : 0, this.level, 0x19, 0x00]).copy(reply);

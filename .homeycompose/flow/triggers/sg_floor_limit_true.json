@@ -1,0 +1,13 @@
+{
+  "title": {
+    "en": "The floor limit was reached",
+    "no": "Gulvgrensen ble nådd"
+  },
+  "args": [
+    {
+      "type": "device",
+      "name": "device",
+      "filter": "driver_id=sg_thermostat|sg3_thermostat"
+    }
+  ]
+}

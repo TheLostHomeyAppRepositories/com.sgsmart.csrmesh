@@ -87,6 +87,109 @@
     "triggers": [
       {
         "title": {
+          "en": "The floor temperature changed",
+          "no": "Gulvtemperaturen endret seg"
+        },
+        "tokens": [
+          {
+            "name": "measure_temperature.floor",
+            "type": "number",
+            "title": {
+              "en": "Floor temperature",
+              "no": "Gulvtemperatur"
+            },
+            "example": 24
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat|sg3_thermostat"
+          }
+        ],
+        "id": "measure_temperature.floor_changed"
+      },
+      {
+        "title": {
+          "en": "The room temperature changed",
+          "no": "Romtemperaturen endret seg"
+        },
+        "tokens": [
+          {
+            "name": "measure_temperature.room",
+            "type": "number",
+            "title": {
+              "en": "Room temperature",
+              "no": "Romtemperatur"
+            },
+            "example": 21
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat|sg3_thermostat"
+          }
+        ],
+        "id": "measure_temperature.room_changed"
+      },
+      {
+        "title": {
+          "en": "Floor limit no longer reached",
+          "no": "Gulvgrensen er ikke lenger nådd"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat|sg3_thermostat"
+          }
+        ],
+        "id": "sg_floor_limit_false"
+      },
+      {
+        "title": {
+          "en": "The floor limit was reached",
+          "no": "Gulvgrensen ble nådd"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat|sg3_thermostat"
+          }
+        ],
+        "id": "sg_floor_limit_true"
+      },
+      {
+        "title": {
+          "en": "The preset changed",
+          "no": "Forhåndsinnstillingen ble endret"
+        },
+        "tokens": [
+          {
+            "name": "sg_heat_preset",
+            "type": "string",
+            "title": {
+              "en": "Preset",
+              "no": "Forhåndsinnstilling"
+            },
+            "example": "comfort"
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat|sg3_thermostat"
+          }
+        ],
+        "id": "sg_heat_preset_changed"
+      },
+      {
+        "title": {
           "en": "Stopped heating",
           "no": "Sluttet å varme"
         },
@@ -114,6 +217,34 @@
         "id": "sg_heating_true"
       },
       {
+        "title": {
+          "en": "The open window function ended",
+          "no": "Åpent vindu-funksjonen er ferdig"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat|sg3_thermostat"
+          }
+        ],
+        "id": "sg_window_open_false"
+      },
+      {
+        "title": {
+          "en": "The open window function started",
+          "no": "Åpent vindu-funksjonen slo inn"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat|sg3_thermostat"
+          }
+        ],
+        "id": "sg_window_open_true"
+      },
+      {
         "id": "plug_countdown_done",
         "title": {
           "en": "The countdown is done",
@@ -130,184 +261,10 @@
             "filter": "driver_id=sg_plug"
           }
         ]
-      },
-      {
-        "id": "measure_temperature.floor_changed",
-        "title": {
-          "en": "The floor temperature changed",
-          "no": "Gulvtemperaturen endret seg"
-        },
-        "tokens": [
-          {
-            "name": "measure_temperature.floor",
-            "type": "number",
-            "title": {
-              "en": "Floor temperature",
-              "no": "Gulvtemperatur"
-            },
-            "example": 24
-          }
-        ],
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      },
-      {
-        "id": "measure_temperature.room_changed",
-        "title": {
-          "en": "The room temperature changed",
-          "no": "Romtemperaturen endret seg"
-        },
-        "tokens": [
-          {
-            "name": "measure_temperature.room",
-            "type": "number",
-            "title": {
-              "en": "Room temperature",
-              "no": "Romtemperatur"
-            },
-            "example": 21
-          }
-        ],
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      },
-      {
-        "id": "sg_heat_preset_changed",
-        "title": {
-          "en": "The preset changed",
-          "no": "Forhåndsinnstillingen ble endret"
-        },
-        "tokens": [
-          {
-            "name": "sg_heat_preset",
-            "type": "string",
-            "title": {
-              "en": "Preset",
-              "no": "Forhåndsinnstilling"
-            },
-            "example": "comfort"
-          }
-        ],
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      },
-      {
-        "id": "sg_window_open_true",
-        "title": {
-          "en": "The open window function started",
-          "no": "Åpent vindu-funksjonen slo inn"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      },
-      {
-        "id": "sg_window_open_false",
-        "title": {
-          "en": "The open window function ended",
-          "no": "Åpent vindu-funksjonen er ferdig"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      },
-      {
-        "id": "sg_floor_limit_true",
-        "title": {
-          "en": "The floor limit was reached",
-          "no": "Gulvgrensen ble nådd"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      },
-      {
-        "id": "sg_floor_limit_false",
-        "title": {
-          "en": "Floor limit no longer reached",
-          "no": "Gulvgrensen er ikke lenger nådd"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
       }
     ],
     "conditions": [
       {
-        "title": {
-          "en": "!{{Is|Is not}} heating",
-          "no": "!{{Varmer|Varmer ikke}}"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat|sg3_thermostat"
-          }
-        ],
-        "id": "sg_heating_is"
-      },
-      {
-        "id": "plug_countdown_running",
-        "title": {
-          "en": "The countdown !{{is|is not}} running",
-          "no": "Nedtellingen !{{går|går ikke}}"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_plug"
-          }
-        ]
-      },
-      {
-        "id": "sg_window_open_is",
-        "title": {
-          "en": "The open window function !{{is|is not}} active",
-          "no": "Åpent vindu-funksjonen !{{er|er ikke}} aktiv"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          }
-        ]
-      },
-      {
-        "id": "sg_heat_preset_is",
         "title": {
           "en": "The preset !{{is|is not}} ...",
           "no": "Forhåndsinnstillingen !{{er|er ikke}} ..."
@@ -320,7 +277,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=sg_thermostat"
+            "filter": "driver_id=sg_thermostat|sg3_thermostat"
           },
           {
             "type": "dropdown",
@@ -352,6 +309,49 @@
                 }
               }
             ]
+          }
+        ],
+        "id": "sg_heat_preset_is"
+      },
+      {
+        "title": {
+          "en": "!{{Is|Is not}} heating",
+          "no": "!{{Varmer|Varmer ikke}}"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat|sg3_thermostat"
+          }
+        ],
+        "id": "sg_heating_is"
+      },
+      {
+        "title": {
+          "en": "The open window function !{{is|is not}} active",
+          "no": "Åpent vindu-funksjonen !{{er|er ikke}} aktiv"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat|sg3_thermostat"
+          }
+        ],
+        "id": "sg_window_open_is"
+      },
+      {
+        "id": "plug_countdown_running",
+        "title": {
+          "en": "The countdown !{{is|is not}} running",
+          "no": "Nedtellingen !{{går|går ikke}}"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_plug"
           }
         ]
       }
@@ -387,6 +387,55 @@
           }
         ],
         "id": "gen1_all_level"
+      },
+      {
+        "title": {
+          "en": "Choose the preset ...",
+          "no": "Velg forhåndsinnstillingen ..."
+        },
+        "titleFormatted": {
+          "en": "Choose the preset [[preset]]",
+          "no": "Velg forhåndsinnstillingen [[preset]]"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sg_thermostat|sg3_thermostat"
+          },
+          {
+            "type": "dropdown",
+            "name": "preset",
+            "title": {
+              "en": "Preset",
+              "no": "Forhåndsinnstilling"
+            },
+            "values": [
+              {
+                "id": "comfort",
+                "label": {
+                  "en": "Comfort",
+                  "no": "Komfort"
+                }
+              },
+              {
+                "id": "eco",
+                "label": {
+                  "en": "Eco",
+                  "no": "Eco"
+                }
+              },
+              {
+                "id": "min",
+                "label": {
+                  "en": "Min",
+                  "no": "Min"
+                }
+              }
+            ]
+          }
+        ],
+        "id": "sg_heat_preset_set"
       },
       {
         "id": "plug_off_in",
@@ -475,55 +524,6 @@
             "filter": "driver_id=sg_plug"
           }
         ]
-      },
-      {
-        "id": "sg_heat_preset_set",
-        "title": {
-          "en": "Choose the preset ...",
-          "no": "Velg forhåndsinnstillingen ..."
-        },
-        "titleFormatted": {
-          "en": "Choose the preset [[preset]]",
-          "no": "Velg forhåndsinnstillingen [[preset]]"
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=sg_thermostat"
-          },
-          {
-            "type": "dropdown",
-            "name": "preset",
-            "title": {
-              "en": "Preset",
-              "no": "Forhåndsinnstilling"
-            },
-            "values": [
-              {
-                "id": "comfort",
-                "label": {
-                  "en": "Comfort",
-                  "no": "Komfort"
-                }
-              },
-              {
-                "id": "eco",
-                "label": {
-                  "en": "Eco",
-                  "no": "Eco"
-                }
-              },
-              {
-                "id": "min",
-                "label": {
-                  "en": "Min",
-                  "no": "Min"
-                }
-              }
-            ]
-          }
-        ]
       }
     ]
   },
@@ -594,8 +594,14 @@
         "measure_temperature.room",
         "onoff",
         "thermostat_mode",
+        "sg_heat_preset",
         "sg_heating",
-        "measure_power"
+        "measure_power",
+        "alarm_problem",
+        "sg_window_open",
+        "sg_floor_limit",
+        "measure_signal_strength",
+        "sg_connection"
       ],
       "capabilitiesOptions": {
         "target_temperature": {
@@ -616,6 +622,9 @@
             "no": "Romtemperatur"
           }
         },
+        "onoff": {
+          "uiQuickAction": true
+        },
         "thermostat_mode": {
           "uiComponent": null,
           "values": [
@@ -635,9 +644,6 @@
             }
           ]
         },
-        "measure_power": {
-          "approximated": true
-        },
         "sg_heating": {
           "titleTrue": {
             "en": "Heating",
@@ -646,6 +652,35 @@
           "titleFalse": {
             "en": "Not heating",
             "no": "Varmer ikke"
+          }
+        },
+        "measure_power": {
+          "approximated": true
+        },
+        "sg_window_open": {
+          "titleTrue": {
+            "en": "Active",
+            "no": "Aktiv"
+          },
+          "titleFalse": {
+            "en": "Not active",
+            "no": "Ikke aktiv"
+          }
+        },
+        "sg_floor_limit": {
+          "titleTrue": {
+            "en": "Reached",
+            "no": "Nådd"
+          },
+          "titleFalse": {
+            "en": "Not reached",
+            "no": "Ikke nådd"
+          }
+        },
+        "measure_signal_strength": {
+          "title": {
+            "en": "Signal to Homey",
+            "no": "Signal til Homey"
           }
         }
       },

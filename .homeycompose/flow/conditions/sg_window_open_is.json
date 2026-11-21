@@ -1,0 +1,13 @@
+{
+  "title": {
+    "en": "The open window function !{{is|is not}} active",
+    "no": "Åpent vindu-funksjonen !{{er|er ikke}} aktiv"
+  },
+  "args": [
+    {
+      "type": "device",
+      "name": "device",
+      "filter": "driver_id=sg_thermostat|sg3_thermostat"
+    }
+  ]
+}

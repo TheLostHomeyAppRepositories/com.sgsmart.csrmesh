@@ -1,0 +1,24 @@
+{
+  "title": {
+    "en": "The floor temperature changed",
+    "no": "Gulvtemperaturen endret seg"
+  },
+  "tokens": [
+    {
+      "name": "measure_temperature.floor",
+      "type": "number",
+      "title": {
+        "en": "Floor temperature",
+        "no": "Gulvtemperatur"
+      },
+      "example": 24
+    }
+  ],
+  "args": [
+    {
+      "type": "device",
+      "name": "device",
+      "filter": "driver_id=sg_thermostat|sg3_thermostat"
+    }
+  ]
+}

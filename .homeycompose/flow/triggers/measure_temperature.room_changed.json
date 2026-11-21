@@ -1,0 +1,24 @@
+{
+  "title": {
+    "en": "The room temperature changed",
+    "no": "Romtemperaturen endret seg"
+  },
+  "tokens": [
+    {
+      "name": "measure_temperature.room",
+      "type": "number",
+      "title": {
+        "en": "Room temperature",
+        "no": "Romtemperatur"
+      },
+      "example": 21
+    }
+  ],
+  "args": [
+    {
+      "type": "device",
+      "name": "device",
+      "filter": "driver_id=sg_thermostat|sg3_thermostat"
+    }
+  ]
+}

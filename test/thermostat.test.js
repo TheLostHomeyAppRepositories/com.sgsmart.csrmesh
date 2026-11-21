@@ -28,6 +28,18 @@ const KEY = deriveNetworkKey('test-only-pass');
 const LOC = 0x5a3c;
 const MESH_ID = 0x0201;
 const read = (file) => fs.readFileSync(path.join(ROOT, file), 'utf8');
+// HeatReg Smart's Flow cards: the app's, shared with HeatReg Smart 3.0
+// (.homeycompose/flow, test/heatreg3.test.js), as { triggers, conditions,
+// actions }, each card with its id, by id.
+function thermostatCards() {
+  const cards = {};
+  for (const kind of ['triggers', 'conditions', 'actions']) {
+    cards[kind] = fs.readdirSync(path.join(ROOT, '.homeycompose', 'flow', kind)).filter((file) => file.endsWith('.json')).sort()
+      .map((file) => ({ id: file.slice(0, -'.json'.length), ...JSON.parse(read(`.homeycompose/flow/${kind}/${file}`)) }))
+      .filter((card) => (card.args || []).some((arg) => arg.type === 'device' && String(arg.filter).split('=')[1].split('|').includes('sg_thermostat')));
+  }
+  return cards;
+}
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 const plainOf = (packet) => decryptPayload(KEY, packet.subarray(0, 3), packet.subarray(3, 5), packet.subarray(5, packet.length - 9));
 const hexOf = (plain) => plain.toString('hex');
@@ -166,8 +178,7 @@ test('the setting "Displayed temperature": Automatic by default, then the floor 
   assert.deepEqual(setting.label, { en: 'Displayed temperature', no: 'Vist temperatur' });
   assert.deepEqual(setting.values.map((v) => v.label), [
     { en: 'Automatic', no: 'Automatisk' }, { en: 'Floor sensor', no: 'Gulvføler' }, { en: 'Room sensor', no: 'Romføler' }]);
-  const card = JSON.parse(read('drivers/sg_thermostat/driver.flow.compose.json')).triggers
-    .find((c) => c.id === 'measure_temperature.room_changed');
+  const card = thermostatCards().triggers.find((c) => c.id === 'measure_temperature.room_changed');
   assert.deepEqual(card.title, { en: 'The room temperature changed', no: 'Romtemperaturen endret seg' });
   assert.deepEqual(card.tokens.map((t) => [t.name, t.type]), [['measure_temperature.room', 'number']]);
   assert.deepEqual(setting.hint, {
@@ -189,18 +200,17 @@ test('the setting "Displayed temperature": Automatic by default, then the floor 
 });
 
 test('the Flow cards: in the manifest with both languages, and the driver answers the conditions and sends the preset through its listener', async () => {
-  const cards = JSON.parse(read('drivers/sg_thermostat/driver.flow.compose.json'));
+  // The app's cards, shared with HeatReg Smart 3.0 with the same ids; none
+  // of the driver's own.
+  const cards = thermostatCards();
   assert.deepEqual(Object.fromEntries(Object.entries(cards).map(([kind, list]) => [kind, list.map((c) => c.id)])), {
-    triggers: ['measure_temperature.floor_changed', 'measure_temperature.room_changed', 'sg_heat_preset_changed',
-      'sg_window_open_true', 'sg_window_open_false', 'sg_floor_limit_true', 'sg_floor_limit_false'],
-    conditions: ['sg_window_open_is', 'sg_heat_preset_is'],
+    triggers: ['measure_temperature.floor_changed', 'measure_temperature.room_changed', 'sg_floor_limit_false', 'sg_floor_limit_true',
+      'sg_heat_preset_changed', 'sg_heating_false', 'sg_heating_true', 'sg_window_open_false', 'sg_window_open_true'],
+    conditions: ['sg_heat_preset_is', 'sg_heating_is', 'sg_window_open_is'],
     actions: ['sg_heat_preset_set'],
   });
-  // The heating cards are the app's, shared with HeatReg Smart 3.0, with the
-  // same ids (test/heatreg3.test.js).
-  const shared = ['triggers/sg_heating_true', 'triggers/sg_heating_false', 'conditions/sg_heating_is']
-    .map((file) => ({ id: file.split('/')[1], ...JSON.parse(read(`.homeycompose/flow/${file}.json`)) }));
-  for (const c of [...Object.values(cards).flat(), ...shared]) {
+  assert.deepEqual(JSON.parse(read('drivers/sg_thermostat/driver.flow.compose.json')), { triggers: [], conditions: [], actions: [] });
+  for (const c of Object.values(cards).flat()) {
     for (const field of ['title', 'titleFormatted', 'hint']) {
       if (c[field]) assert.deepEqual(Object.keys(c[field]).sort(), ['en', 'no'], `${c.id} ${field}`);
     }
@@ -1200,14 +1210,13 @@ test('the open window function and the floor limit: their texts, and none says a
     [{ en: 'Active', no: 'Aktiv' }, { en: 'Not active', no: 'Ikke aktiv' }]);
   assert.deepEqual([compose.sg_floor_limit.titleTrue, compose.sg_floor_limit.titleFalse],
     [{ en: 'Reached', no: 'Nådd' }, { en: 'Not reached', no: 'Ikke nådd' }]);
-  const cards = Object.fromEntries(Object.values(JSON.parse(read('drivers/sg_thermostat/driver.flow.compose.json'))).flat()
-    .map((c) => [c.id, c.title]));
+  const cards = Object.fromEntries(Object.values(thermostatCards()).flat().map((c) => [c.id, c.title]));
   assert.deepEqual(cards.sg_window_open_true, { en: 'The open window function started', no: 'Åpent vindu-funksjonen slo inn' });
   assert.deepEqual(cards.sg_window_open_false, { en: 'The open window function ended', no: 'Åpent vindu-funksjonen er ferdig' });
   assert.deepEqual(cards.sg_window_open_is, { en: 'The open window function !{{is|is not}} active', no: 'Åpent vindu-funksjonen !{{er|er ikke}} aktiv' });
   assert.deepEqual(cards.sg_floor_limit_false, { en: 'Floor limit no longer reached', no: 'Gulvgrensen er ikke lenger nådd' });
   const texts = [read('.homeycompose/capabilities/sg_window_open.json'), read('drivers/sg_thermostat/driver.compose.json'),
-    read('drivers/sg_thermostat/driver.flow.compose.json'), read('locales/en.json'), read('locales/no.json')].join('\n');
+    JSON.stringify(thermostatCards()), read('locales/en.json'), read('locales/no.json')].join('\n');
   assert.doesNotMatch(texts, /window (?:was )?(?:opened|closed)|vinduet ble (?:åpnet|lukket)|\bÅpent\b"|"Lukket"|"Closed"/i);
 });
 
@@ -1239,9 +1248,7 @@ test('heating and the floor limit: their titles and values; the Flow cards as be
     [{ en: 'Heating', no: 'Varmer' }, { en: 'Not heating', no: 'Varmer ikke' }]);
   assert.deepEqual([options.sg_floor_limit.titleTrue, options.sg_floor_limit.titleFalse],
     [{ en: 'Reached', no: 'Nådd' }, { en: 'Not reached', no: 'Ikke nådd' }]);
-  const cards = Object.fromEntries(Object.values(JSON.parse(read('drivers/sg_thermostat/driver.flow.compose.json'))).flat()
-    .map((c) => [c.id, c.title]));
-  for (const id of ['sg_heating_true', 'sg_heating_false']) cards[id] = JSON.parse(read(`.homeycompose/flow/triggers/${id}.json`)).title;
+  const cards = Object.fromEntries(Object.values(thermostatCards()).flat().map((c) => [c.id, c.title]));
   assert.deepEqual([cards.sg_heating_true, cards.sg_heating_false],
     [{ en: 'Started heating', no: 'Begynte å varme' }, { en: 'Stopped heating', no: 'Sluttet å varme' }]);
   assert.deepEqual([cards.sg_floor_limit_true, cards.sg_floor_limit_false],

@@ -35,28 +35,35 @@ const APP_KEY = 'f0e1d2c3b4a5968778695a4b3c2d1e0f';
 // A kind 0x2E message, 55 bytes after the opcode: the values where they are
 // assumed to be, the rest made up.
 function thermostatStatus({
-  room = [0x15, 5], floor = [0x17, 2], setPoint = [0x16, 0], sensorBits = 2, heating = true, on = true,
+  room = [0x15, 5], floor = [0x17, 2], setPoint = [0x16, 0], eco = [0x10, 0], comfort = [0x15, 0], min = [0x05, 0],
+  protection = 0, sensorBits = 2, minActive = false, heating = true, on = true, window = false,
 } = {}) {
   const parameters = Buffer.alloc(55, 0x00);
   parameters[0] = 0x2e;
   parameters.set(room, 5);
   parameters.set(floor, 7);
   parameters.set(setPoint, 34);
-  parameters[49] = sensorBits << 1;
-  parameters[50] = (heating ? 2 : 0) | (on ? 4 : 0);
+  parameters.set(eco, 36);
+  parameters.set(comfort, 38);
+  parameters.set(min, 40);
+  parameters[47] = protection;
+  parameters[49] = (sensorBits << 1) | (minActive ? 0x10 : 0);
+  parameters[50] = (heating ? 2 : 0) | (on ? 4 : 0) | (window ? 0x10 : 0);
   return parameters;
 }
+const PRESET_TEMPERATURES = { eco: 16, comfort: 21, min: 5 };
 
-test('the status of kind 0x2E: room, floor, set point, the sensor, heating and on, with the sign in bit 7 and the tenths in the second byte', () => {
+test('the status of kind 0x2E: the temperatures, the set point and the presets, with the sign in bit 7 and the tenths in the second byte; the sensor, min in use, the protection byte, heating, on and the open window', () => {
   assert.equal(sg.KIND_THERMOSTAT_STATUS, 0x2e);
   assert.deepEqual(sg.parseThermostatStatus(thermostatStatus()), {
-    room: 21.5, floor: 23.2, setPoint: 22, sensor: 'floor', heating: true, on: true,
+    room: 21.5, floor: 23.2, setPoint: 22, ...PRESET_TEMPERATURES, protection: 0, sensor: 'floor', minActive: false, heating: true, on: true, window: false,
   });
   const cold = sg.parseThermostatStatus(thermostatStatus({
-    room: [0x80, 0], floor: [0x82, 3], setPoint: [0x05, 0], sensorBits: 1, heating: false, on: false,
+    room: [0x80, 0], floor: [0x82, 3], setPoint: [0x05, 0], eco: [0x10, 5], comfort: [0x16, 5], min: [0x07, 0],
+    protection: 0x84, sensorBits: 1, minActive: true, heating: false, on: false, window: true,
   }));
   assert.deepEqual(cold, {
-    room: 0, floor: -2.3, setPoint: 5, sensor: 'room', heating: false, on: false,
+    room: 0, floor: -2.3, setPoint: 5, eco: 16.5, comfort: 22.5, min: 7, protection: 0x84, sensor: 'room', minActive: true, heating: false, on: false, window: true,
   });
   assert.equal(sg.parseThermostatStatus(thermostatStatus({ sensorBits: 3 })).sensor, 'roomFloor');
   assert.equal(sg.parseThermostatStatus(thermostatStatus({ sensorBits: 0 })).sensor, null);
@@ -81,6 +88,27 @@ test('0x18 on and off: the SG command opcode, then kind, TID, SEQ, the node (big
   assert.equal(bytes(sg.sgThermostatPower(0x0003, true, { tid: 0xff, seq: 0x07 })), 'e0 e8 0e 18 ff 07 00 03 01');
   for (const on of [1, 0, 'on', null, undefined]) assert.throws(() => sg.sgThermostatPower(0x5a01, on, IDS), /true or false/, String(on));
   assert.throws(() => sg.sgThermostatPower(0, true, IDS), /bad node address/);
+});
+
+test('0x08 a preset: byte 5 is 0 for eco, 1 for comfort and 2 for min', () => {
+  assert.equal(sg.KIND_THERMOSTAT_PRESET, 0x08);
+  assert.equal(bytes(sg.sgThermostatPreset(0x5a01, 'eco', IDS)), 'e0 e8 0e 08 2a 00 5a 01 00');
+  assert.equal(bytes(sg.sgThermostatPreset(0x5a01, 'comfort', IDS)), 'e0 e8 0e 08 2a 00 5a 01 01');
+  assert.equal(bytes(sg.sgThermostatPreset(0x5a01, 'min', IDS)), 'e0 e8 0e 08 2a 00 5a 01 02');
+  for (const preset of ['max', 'Eco', 0, null, undefined, 'toString']) {
+    assert.throws(() => sg.sgThermostatPreset(0x5a01, preset, IDS), /eco, comfort or min/, String(preset));
+  }
+});
+
+test('the acknowledgement of 0x08: taken with byte 1 = 1, refused with byte 1 = 2, nothing else', () => {
+  assert.deepEqual(sg.parseThermostatAck(Buffer.from([0x08, 0x01, 0x2a, 0x00, 0x7f, 0x80, 0x00])), {
+    kind: 0x08, tid: 0x2a, seq: 0x00, address: 0x7f80, values: [0], refused: false,
+  });
+  assert.deepEqual(sg.parseThermostatAck(Buffer.from([0x08, 0x02, 0x2a, 0x00, 0x7f, 0x80])), {
+    kind: 0x08, tid: 0x2a, seq: 0x00, address: 0x7f80, values: [], refused: true,
+  });
+  assert.equal(sg.parseThermostatAck(Buffer.from([0x08, 0x03, 0x2a, 0x00, 0x7f, 0x80, 0x00])), null);
+  assert.equal(sg.parseThermostatAck(Buffer.from([0x08, 0x01, 0x2a, 0x00, 0x7f])), null, 'too short');
 });
 
 test('0x19 the set point: whole degrees in byte 5 and tenths in byte 6, from 5 to 35 in steps of 0.5', () => {
@@ -111,11 +139,13 @@ test('the commands would fit one unsegmented mesh message, and with segmented th
 
 test('the acknowledgement of 0x18 and 0x19: the same kind, byte 1 is 1, the TID and SEQ of the command, an address, the values; anything else is none', () => {
   assert.deepEqual(sg.parseThermostatAck(Buffer.from([0x18, 0x01, 0x2a, 0x00, 0x7f, 0x80, 0x01])), {
-    kind: 0x18, tid: 0x2a, seq: 0x00, address: 0x7f80, values: [1],
+    kind: 0x18, tid: 0x2a, seq: 0x00, address: 0x7f80, values: [1], refused: false,
   });
   assert.deepEqual(sg.parseThermostatAck(Buffer.from([0x19, 0x01, 0x2a, 0x01, 0x7f, 0x80, 0x15, 0x05])), {
-    kind: 0x19, tid: 0x2a, seq: 0x01, address: 0x7f80, values: [0x15, 0x05],
+    kind: 0x19, tid: 0x2a, seq: 0x01, address: 0x7f80, values: [0x15, 0x05], refused: false,
   });
+  assert.equal(sg.parseThermostatAck(Buffer.from([0x18, 0x02, 0x2a, 0x00, 0x7f, 0x80, 0x01])), null, '0x18 is never refused');
+  assert.equal(sg.parseThermostatAck(Buffer.from([0x19, 0x02, 0x2a, 0x00, 0x7f, 0x80, 0x15, 0x05])), null, '0x19 is never refused');
   assert.equal(sg.parseThermostatAck(Buffer.from([0x19, 0x00, 0x2a, 0x00, 0x7f, 0x80, 0x15])), null, 'byte 1 not 1');
   assert.equal(sg.parseThermostatAck(Buffer.from([0x18, 0x01, 0x2a, 0x00, 0x7f, 0x80])), null, 'no value');
   assert.equal(sg.parseThermostatAck(Buffer.from([0x09, 0x01, 0x2a, 0x00, 0x7f, 0x80, 0x01, 0x32])), null, 'a dimmer\'s reply');
@@ -152,9 +182,14 @@ async function thermostat({ settings = {}, kept = {} } = {}) {
         else resolve(answer);
       }));
     },
-    answer: (command) => ({
-      acked: true, segments: 2, ack: { values: command.power === undefined ? [Math.floor(command.setPoint), (command.setPoint * 10) % 10] : [command.power ? 1 : 0], ms: 400 },
-    }),
+    answer: (command) => {
+      let values = [command.power ? 1 : 0];
+      if (command.setPoint !== undefined) values = [Math.floor(command.setPoint), (command.setPoint * 10) % 10];
+      if (command.preset !== undefined) values = [sg.THERMOSTAT_PRESETS[command.preset]];
+      return {
+        acked: true, segments: 2, ack: { values, refused: false, ms: 400 },
+      };
+    },
   });
   // Lets the oldest send answer, and what follows it run.
   const release = async () => {
@@ -192,10 +227,17 @@ test('the device shows its status: the floor as the main temperature with the fl
     'measure_temperature.room': 21.5,
     onoff: true,
     thermostat_mode: 'heat',
+    sg_heat_preset: null,
     sg_heating: true,
     measure_power: 800,
+    alarm_problem: false,
+    sg_window_open: false,
+    sg_floor_limit: false,
+    measure_signal_strength: undefined,
+    sg_connection: 'device.connection.indirect',
   });
-  assert.ok(device.logs.includes('status: room 21.5, floor 23.2, set point 22.0, sensor floor, heating, on (first since start)'), device.logs.join('\n'));
+  assert.ok(device.logs.includes('status: room 21.5, floor 23.2, set point 22.0, eco 16.0, comfort 21.0, min 5.0, sensor floor, heating, on, '
+    + 'window not open, protection 0x00 (first since start)'), device.logs.join('\n'));
   status();
   assert.equal(device.logs.filter((line) => line.startsWith('status: ')).length, 1, 'logged again only when it changes');
   controller.emit('thermostat', { node: 0x5a02, ...sg.parseThermostatStatus(thermostatStatus({ on: false })) });
@@ -246,7 +288,7 @@ test('after a start the values Homey kept stay until the first status', async ()
 
 test('on and off from Homey: onoff and thermostat_mode (heat on, off off) send 0x18 once, shown at once, the acknowledged value kept', async () => {
   const { device, sent, status, release } = await thermostat();
-  assert.deepEqual(Object.keys(device.listened).sort(), ['onoff', 'target_temperature', 'thermostat_mode']);
+  assert.deepEqual(Object.keys(device.listened).sort(), ['onoff', 'sg_heat_preset', 'target_temperature', 'thermostat_mode']);
   status();
   await device.listened.onoff(false);
   assert.deepEqual(sent, [[0x5a01, { power: false }]]);
@@ -334,6 +376,142 @@ test('before its first status since start, a change that does not get through sh
   assert.deepEqual([device.getCapabilityValue('onoff'), device.getCapabilityValue('thermostat_mode')], [false, 'off']);
 });
 
+// ---- the preset, the faults, the window, the signal
+
+test('the preset in use: none when off, min when the thermostat says so, else comfort or eco by the set point; when both have it, the one chosen last, else comfort', async () => {
+  const { device, status, release } = await thermostat();
+  status({ setPoint: [0x15, 0] });
+  assert.equal(device.getCapabilityValue('sg_heat_preset'), 'comfort');
+  status({ setPoint: [0x10, 0] });
+  assert.equal(device.getCapabilityValue('sg_heat_preset'), 'eco');
+  status({ setPoint: [0x10, 0], minActive: true });
+  assert.equal(device.getCapabilityValue('sg_heat_preset'), 'min');
+  status({ setPoint: [0x16, 0] });
+  assert.equal(device.getCapabilityValue('sg_heat_preset'), null, 'neither has the set point');
+  status({ setPoint: [0x15, 0], on: false });
+  assert.equal(device.getCapabilityValue('sg_heat_preset'), null, 'off');
+  status({ setPoint: [0x12, 0], eco: [0x12, 0], comfort: [0x12, 0] });
+  assert.equal(device.getCapabilityValue('sg_heat_preset'), 'comfort', 'both, none chosen');
+  await device.listened.sg_heat_preset('eco');
+  await release();
+  status({ setPoint: [0x12, 0], eco: [0x12, 0], comfort: [0x12, 0] });
+  assert.equal(device.getCapabilityValue('sg_heat_preset'), 'eco', 'both, eco chosen last');
+});
+
+test('a preset from Homey: 0x08 once, shown at once with its temperature as the set point; acknowledged, it counts as reported', async () => {
+  const { device, sent, status, release } = await thermostat();
+  status();
+  await device.listened.sg_heat_preset('eco');
+  assert.deepEqual(sent, [[0x5a01, { preset: 'eco' }]]);
+  assert.deepEqual([device.getCapabilityValue('sg_heat_preset'), device.getCapabilityValue('target_temperature')], ['eco', 16], 'at once');
+  await release();
+  assert.deepEqual([device.getCapabilityValue('sg_heat_preset'), device.getCapabilityValue('target_temperature')], ['eco', 16]);
+  assert.ok(device.logs.includes('preset eco from Homey: acknowledged by the thermostat (0)'), device.logs.join('\n'));
+  await device.listened.sg_heat_preset('eco');
+  assert.equal(sent.length, 1, 'it has eco, and nothing is under way');
+  await device.listened.sg_heat_preset('min');
+  await release();
+  assert.deepEqual([device.getCapabilityValue('sg_heat_preset'), device.getCapabilityValue('target_temperature')], ['min', 5]);
+  await assert.rejects(device.listened.sg_heat_preset('max'), /not a preset/);
+});
+
+test('a refused preset: logged as refused, not sent again, and what the thermostat last reported is shown again; so without an acknowledgement', async () => {
+  const { device, controller, sent, status, release } = await thermostat();
+  status({ setPoint: [0x15, 0] });
+  controller.answer = () => ({ acked: true, segments: 2, ack: { values: [], refused: true, ms: 300 } });
+  await device.listened.sg_heat_preset('min');
+  assert.equal(device.getCapabilityValue('sg_heat_preset'), 'min');
+  await release();
+  assert.deepEqual(sent, [[0x5a01, { preset: 'min' }]]);
+  assert.deepEqual([device.getCapabilityValue('sg_heat_preset'), device.getCapabilityValue('target_temperature')], ['comfort', 21]);
+  assert.ok(device.logs.includes('preset min from Homey: refused by the thermostat, not sent again'));
+  controller.answer = () => ({ acked: true, segments: 2, ack: null });
+  await device.listened.sg_heat_preset('eco');
+  await release();
+  assert.deepEqual([device.getCapabilityValue('sg_heat_preset'), device.getCapabilityValue('target_temperature')], ['comfort', 21]);
+});
+
+test('the faults from the protection byte, as HeatReg Smart: FFF empties the floor and is a problem with the floor sensor, E2 the room; the warning in HeatReg Smart\'s words', async () => {
+  const { device, status } = await thermostat();
+  status({ protection: 0x04 });
+  assert.deepEqual([device.getCapabilityValue('measure_temperature.floor'), device.getCapabilityValue('alarm_problem'), device.warning],
+    [null, true, 'thermostat.fault.FFF']);
+  assert.ok(device.logs.includes('fault shown: FFF'));
+  status({ protection: 0x10, sensorBits: 1 });
+  assert.deepEqual([device.getCapabilityValue('measure_temperature.room'), device.getCapabilityValue('alarm_problem'), device.warning],
+    [null, true, 'thermostat.fault.E2']);
+  status({ protection: 0x10, sensorBits: 2 });
+  assert.deepEqual([device.getCapabilityValue('measure_temperature.room'), device.getCapabilityValue('alarm_problem'), device.warning], [null, false, null],
+    'E2 with the floor sensor, the floor shown: the room empty, no problem, no warning, as HeatReg Smart');
+  await device.onSettings({ newSettings: { shown_temperature: 'room', heating_cable_power: 0 }, changedKeys: ['shown_temperature'] });
+  assert.deepEqual([device.getCapabilityValue('alarm_problem'), device.warning], [false, 'thermostat.fault.E2'], 'the room shown: the warning');
+  await device.onSettings({ newSettings: { shown_temperature: 'auto', heating_cable_power: 0 }, changedKeys: ['shown_temperature'] });
+  status({ protection: 0x40 });
+  assert.deepEqual([device.getCapabilityValue('alarm_problem'), device.warning], [true, 'thermostat.fault.EEE']);
+  status({ protection: 0x08, floor: [0, 0] });
+  assert.deepEqual([device.getCapabilityValue('measure_temperature.floor'), device.warning], [null, 'thermostat.fault.E1']);
+  status();
+  assert.deepEqual([device.getCapabilityValue('alarm_problem'), device.warning], [false, null]);
+  assert.ok(device.logs.includes('fault cleared'));
+});
+
+test('the floor limit (bit 7, not with the room sensor alone), the open window, and an empty displayed temperature as the warning', async () => {
+  const { device, status } = await thermostat({ settings: { shown_temperature: 'floor' } });
+  status({ protection: 0x80 });
+  assert.equal(device.getCapabilityValue('sg_floor_limit'), true);
+  status({ protection: 0x80, sensorBits: 1 });
+  assert.equal(device.getCapabilityValue('sg_floor_limit'), false);
+  assert.equal(device.warning, 'thermostat.shownMissing.floor', 'Floor chosen, the room sensor alone');
+  status({ window: true });
+  assert.deepEqual([device.getCapabilityValue('sg_window_open'), device.getCapabilityValue('sg_floor_limit'), device.warning], [true, false, null]);
+  status();
+  assert.equal(device.getCapabilityValue('sg_window_open'), false);
+});
+
+test('the signal from its advertisement (type 0xB4 and its address), in a scan or when a link is set up; "Link" always indirect; empty until the first', async () => {
+  const { device, controller } = await thermostat();
+  assert.equal(device.getCapabilityValue('measure_signal_strength'), undefined, 'empty');
+  assert.equal(device.getCapabilityValue('sg_connection'), 'device.connection.indirect');
+  controller.emit('advert', { address: 0x5a02, type: 3021, rssi: -60, source: 'scan' });
+  controller.emit('advert', { address: 0x5a01, type: 3080, rssi: -60, source: 'scan' });
+  assert.equal(device.getCapabilityValue('measure_signal_strength'), undefined, 'not its');
+  controller.emit('advert', { address: 0x5a01, type: 3021, rssi: -71, source: 'scan' });
+  assert.equal(device.getCapabilityValue('measure_signal_strength'), -71);
+  controller.emit('proxy', { address: 0x0003, rssi: -50 });
+  assert.equal(device.getCapabilityValue('sg_connection'), 'device.connection.indirect');
+});
+
+test('one added before gets the new capabilities at start, and the signal its name', async () => {
+  const sg3 = Object.assign(new EventEmitter(), { start() {} });
+  const homey = fake.fakeHomey({ sg3: () => sg3, sg3HomeKey: () => HOME_KEY }, { __: (key) => key });
+  const device = new SG3ThermostatDevice({ homey, data: { id: `sig:${HOME_KEY}:5a01` }, store: { sg3Type: 3021 }, settings: {} });
+  const capabilities = new Set(['target_temperature', 'measure_temperature', 'measure_temperature.floor', 'measure_temperature.room', 'onoff',
+    'thermostat_mode', 'sg_heating', 'measure_power']);
+  const options = {};
+  device.hasCapability = (capability) => capabilities.has(capability);
+  device.addCapability = async (capability) => { capabilities.add(capability); };
+  device.getCapabilityOptions = (capability) => options[capability] || {};
+  device.setCapabilityOptions = async (capability, value) => { options[capability] = value; };
+  device.registerCapabilityListener = () => {};
+  await device.onInit();
+  assert.deepEqual([...capabilities].slice(8), ['sg_heat_preset', 'sg_window_open', 'sg_floor_limit', 'alarm_problem', 'measure_signal_strength', 'sg_connection']);
+  assert.deepEqual(options.measure_signal_strength, { title: { en: 'Signal to Homey', no: 'Signal til Homey' } });
+  assert.ok(device.logs.includes('sg_heat_preset added'));
+});
+
+test('every scan through the app\'s queue is handed to the 3.0 controller for the signal (app.js, bleDiscover)', async () => {
+  const app = Object.create(SGSmartApp.prototype);
+  const advertisements = [{ uuid: 'made-up', rssi: -60 }];
+  app.homey = fake.fakeHomey(app, { ble: { discover: async () => advertisements } });
+  app.log = () => {};
+  const noted = [];
+  app._sg3 = { noteAdverts: (list) => noted.push(list) };
+  assert.equal(await app.bleDiscover(), advertisements);
+  assert.deepEqual(noted, [advertisements]);
+  app._sg3 = null;
+  assert.equal(await app.bleDiscover(), advertisements, 'without 3.0 as before');
+});
+
 test('without a 3.0 network, or with another home\'s, it is unavailable with its own text', async () => {
   const homey = fake.fakeHomey({ sg3: () => null, sg3HomeKey: () => null });
   const device = new SG3ThermostatDevice({ homey, data: { id: `sig:${HOME_KEY}:5a01` }, store: { sg3Type: 3021 } });
@@ -386,6 +564,7 @@ test('pairing: HeatReg Smart 3.0 lists the thermostats only, with its capabiliti
     name: 'Made-up bad',
     data: { id: `sig:${HOME_KEY}:5a01` },
     capabilities: SG3ThermostatDriver.LISTING.capabilities,
+    capabilitiesOptions: { measure_signal_strength: { title: { en: 'Signal to Homey', no: 'Signal til Homey' } } },
     store: { sg3Type: 3021 },
   }]);
   assert.deepEqual([thermostats.inAccount, thermostats.inScan, thermostats.unknown], [1, 0, 0]);
@@ -414,7 +593,13 @@ test('the driver: "HeatReg Smart 3.0", a thermostat with the capabilities it lis
   assert.deepEqual(compose.capabilitiesOptions.target_temperature, {
     min: 5, max: 35, step: 0.5, decimals: 1,
   });
-  for (const id of Object.keys(compose.capabilitiesOptions)) assert.deepEqual(compose.capabilitiesOptions[id], heatReg.capabilitiesOptions[id], id);
+  for (const id of Object.keys(compose.capabilitiesOptions)) {
+    // The signal named as for the 3.0 dimmers; the rest as HeatReg Smart.
+    const as = id === 'measure_signal_strength' ? dimmer.capabilitiesOptions[id] : heatReg.capabilitiesOptions[id];
+    assert.deepEqual(compose.capabilitiesOptions[id], as, id);
+  }
+  assert.deepEqual(compose.capabilities, [...heatReg.capabilities, 'measure_signal_strength', 'sg_connection'], 'those of HeatReg Smart, and the signal and the link');
+  assert.deepEqual(compose.capabilitiesOptions.measure_signal_strength, SG3ThermostatDriver.LISTING.capabilitiesOptions.measure_signal_strength);
   assert.deepEqual(compose.pair, dimmer.pair);
   assert.deepEqual(compose.images, heatReg.images);
   const settings = JSON.parse(read('drivers/sg3_thermostat/driver.settings.compose.json'));
@@ -451,7 +636,7 @@ test('the texts of HeatReg Smart 3.0, in both languages, with straight quotes', 
   assert.ok(read('settings/index.html').includes(en.settings.otherDevice.sg3));
 });
 
-test('the heating cards are the app\'s, with the ids they had, for HeatReg Smart and HeatReg Smart 3.0; HeatReg Smart\'s other cards stay its own', () => {
+test('the Flow cards are the app\'s, with the ids they had, for HeatReg Smart and HeatReg Smart 3.0; HeatReg Smart has none of its own', () => {
   const app = JSON.parse(read('app.json'));
   const cards = Object.fromEntries(Object.values(app.flow).flat().map((card) => [card.id, card]));
   for (const id of ['sg_heating_true', 'sg_heating_false', 'sg_heating_is']) {
@@ -464,9 +649,17 @@ test('the heating cards are the app\'s, with the ids they had, for HeatReg Smart
   ]);
   assert.ok(app.flow.triggers.some((card) => card.id === 'sg_heating_true') && app.flow.conditions.some((card) => card.id === 'sg_heating_is'));
   const own = JSON.parse(read('drivers/sg_thermostat/driver.flow.compose.json'));
-  assert.ok(!Object.values(own).flat().some((card) => card.id.startsWith('sg_heating')));
-  assert.equal(cards.sg_window_open_true.args[0].filter, 'driver_id=sg_thermostat');
-  assert.ok(read('drivers/sg_thermostat/driver.js').includes("flow.getConditionCard('sg_heating_is').registerRunListener"));
+  assert.deepEqual(own, { triggers: [], conditions: [], actions: [] });
+  const shared = ['measure_temperature.floor_changed', 'measure_temperature.room_changed', 'sg_heat_preset_changed', 'sg_heating_true', 'sg_heating_false',
+    'sg_window_open_true', 'sg_window_open_false', 'sg_floor_limit_true', 'sg_floor_limit_false', 'sg_heating_is', 'sg_window_open_is',
+    'sg_heat_preset_is', 'sg_heat_preset_set'];
+  for (const id of shared) assert.equal(cards[id].args[0].filter, 'driver_id=sg_thermostat|sg3_thermostat', id);
+  assert.deepEqual(Object.values(cards).filter((card) => (card.args || []).some((arg) => /sg_thermostat/.test(arg.filter || ''))).map((card) => card.id).sort(),
+    [...shared].sort(), 'no other');
+  for (const id of ['sg_heating_is', 'sg_window_open_is', 'sg_heat_preset_is']) {
+    assert.ok(read('drivers/sg_thermostat/driver.js').includes(`flow.getConditionCard('${id}').registerRunListener`), id);
+  }
+  assert.ok(read('drivers/sg_thermostat/driver.js').includes("flow.getActionCard('sg_heat_preset_set').registerRunListener"));
 });
 
 // ------------------------------------------------------------ the lines by product
