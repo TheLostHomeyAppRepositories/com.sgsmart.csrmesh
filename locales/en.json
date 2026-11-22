@@ -118,6 +118,7 @@
       },
       "sg3Ready": "SG Smart 3.0: __devices__.",
       "sg3FetchAgain": "SG Smart 3.0: __devices__. Tap \"Fetch again\".",
+      "sg3NeedsDimmer": "SG Smart 3.0: __devices__. Needs a LEDDim Smart 3.0 in the same home.",
       "groupSame": "__count__ __product__ (can be added)",
       "group": "__count__ __product__ (added under __driver__)",
       "groupNotYet": "__count__ __product__ (not supported yet)",

@@ -118,6 +118,7 @@
       },
       "sg3Ready": "SG Smart 3.0: __devices__.",
       "sg3FetchAgain": "SG Smart 3.0: __devices__. Trykk \"Hent på nytt\".",
+      "sg3NeedsDimmer": "SG Smart 3.0: __devices__. Trenger en LEDDim Smart 3.0 i samme hjem.",
       "groupSame": "__count__ __product__ (kan legges til)",
       "group": "__count__ __product__ (legges til under __driver__)",
       "groupNotYet": "__count__ __product__ (ikke støttet ennå)",

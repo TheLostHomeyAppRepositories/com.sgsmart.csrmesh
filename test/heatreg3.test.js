@@ -841,7 +841,7 @@ function summaryLines(language) {
 // An app with a fetched SG account of one home of these devices (made up), in
 // the user's language; the check after the fetch has asked the CSRmesh
 // devices, and none answered.
-async function fetchedSummary(language, devices) {
+async function fetchedSummary(language, devices, extra = {}) {
   const app = {
     logs: [],
     log(...args) { app.logs.push(args.join(' ')); },
@@ -857,7 +857,7 @@ async function fetchedSummary(language, devices) {
   };
   app.homey = fake.fakeHomey(app, { settings, __: (key) => key, i18n: { getLanguage: () => language } });
   const home = {
-    homeKey: HOME_KEY, passphrase: null, netKey: NET_KEY.toUpperCase(), appKey: APP_KEY, locationId: null, devices,
+    homeKey: HOME_KEY, passphrase: null, netKey: NET_KEY.toUpperCase(), appKey: APP_KEY, locationId: null, devices, ...extra,
   };
   app.account = new SgAccount(app, { fetch: async () => ({ homes: [home], loggedOut: true }) });
   await app.account.login('tester@example.invalid', 'made-up pass 7');
@@ -921,11 +921,25 @@ test('a Smart Switch the check did not ask is on the line of its own, not among 
   assert.equal(summaryLines('no')(summary)[0], 'SG Smart: 2 LEDDim Smart (kan legges til). 0 av 2 svarer. Nettverkspassord: 1234.');
 });
 
+test('a home with HeatReg Smart 3.0 alone: it needs a LEDDim Smart 3.0 in the same home, in Norwegian and English, plain, also kept before the home\'s key', async () => {
+  const thermostats = [{ meshId: 0x5a01, type: 3021, name: null }, { meshId: 0x8010, type: 101, name: null }];
+  const no = await fetchedSummary('no', thermostats);
+  assert.equal(no.sg3State, 'needsDimmer');
+  assert.deepEqual(summaryLines('no')(no).slice(-1), ['SG Smart 3.0: 1 HeatReg Smart 3.0. Trenger en LEDDim Smart 3.0 i samme hjem.']);
+  const en = await fetchedSummary('en', thermostats);
+  assert.deepEqual(summaryLines('en')(en).slice(-1), ['SG Smart 3.0: 1 HeatReg Smart 3.0. Needs a LEDDim Smart 3.0 in the same home.']);
+  const old = await fetchedSummary('no', thermostats, { homeKey: undefined });
+  assert.equal(old.sg3State, 'needsDimmer', 'fetching again would not make it one');
+  const withDimmer = await fetchedSummary('no', [...thermostats, { meshId: 0x5a02, type: 3080, name: null }]);
+  assert.equal(withDimmer.sg3State, 'ready');
+});
+
 test('HeatReg Smart 3.0 never says "not supported yet": not in the groups, the texts or the page', async () => {
   const groups = productGroups([{ type: 3021 }], { sg3: true, driverName });
   assert.deepEqual(groups.map((group) => group.state), ['add']);
   const lines = summaryLines('no')(await fetchedSummary('no', [{ meshId: 0x5a01, type: 3021, name: null }])).join('\n');
   assert.doesNotMatch(lines, /HeatReg Smart 3\.0 \(ikke støttet ennå\)/);
+  assert.doesNotMatch(lines, /[Ss]tøttes ikke ennå|ikke støttet/, 'nor the home it is in alone');
   for (const file of ['locales/no.json', 'locales/en.json', 'settings/index.html']) {
     assert.doesNotMatch(read(file), /HeatReg Smart 3\.0 \((ikke støttet ennå|not supported yet)\)/, file);
   }

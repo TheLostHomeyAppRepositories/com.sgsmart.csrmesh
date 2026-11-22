@@ -267,7 +267,8 @@
       // Smart Switches the check did not ask, when there are any: a line
       // under the first.
       // SG Smart 3.0: the devices by product (devicesText) and what to do:
-      // the network in use, kept before the home's key, or later
+      // the network in use, HeatReg Smart 3.0 that needs a LEDDim Smart 3.0
+      // in the same home, kept before the home's key, or later
       // (lib/account.js, sg3State).
       const homeLines = (home) => {
         const items = [];
@@ -282,7 +283,9 @@
           if (home.unknown && home.unknown.length) lines.push(Homey.__('settings.account.unknown', { devices: home.unknown.map(shownDevice).join(', ') }));
           items.push(lines);
         }
-        const sg3Text = { ready: 'settings.account.sg3Ready', fetchAgain: 'settings.account.sg3FetchAgain' }[home.sg3State] || 'settings.account.sg3';
+        const sg3Text = {
+          ready: 'settings.account.sg3Ready', needsDimmer: 'settings.account.sg3NeedsDimmer', fetchAgain: 'settings.account.sg3FetchAgain',
+        }[home.sg3State] || 'settings.account.sg3';
         if (home.sg3) items.push([Homey.__(sg3Text, { devices: devicesText(home.sg3Groups, home.sg3) })]);
         return { title: Homey.__('settings.account.home', { number: home.number }), items };
       };

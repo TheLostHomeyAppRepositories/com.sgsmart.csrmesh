@@ -162,7 +162,7 @@ test('the home of the 3.0 devices in Homey is used, else the first with a device
   app._devices = () => [inHomey(HOME_KEY)];
   assert.equal(app.account.sg3Network().homeKey, HOME_KEY, 'the home of the dimmer in Homey');
   const ready = app.account.summary().homes.map((shown) => shown.sg3State);
-  assert.deepEqual(ready, ['later', 'later', 'ready'], 'the page says the same home');
+  assert.deepEqual(ready, ['needsDimmer', 'later', 'ready'], 'the page says the same home, and the home with the thermostat alone needs a dimmer');
   app._devices = () => [inHomey(THIRD_HOME_KEY, 0x0005)];
   assert.equal(app.account.sg3Network().homeKey, OTHER_HOME_KEY, 'a thermostat in Homey does not make its home the one');
   app._devices = () => [{ getSg3Address: () => null, getSg3HomeKey: () => HOME_KEY }];
