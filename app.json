@@ -219,7 +219,7 @@
       {
         "title": {
           "en": "The open window function ended",
-          "no": "Åpent vindu-funksjonen er ferdig"
+          "no": "Åpent vindu-funksjonen er ikke lenger aktiv"
         },
         "args": [
           {
@@ -756,8 +756,8 @@
                 }
               ],
               "hint": {
-                "en": "Choose which temperature Homey displays. Automatic follows the sensor used by the thermostat.",
-                "no": "Velg hvilken temperatur Homey skal vise. Automatisk følger føleren termostaten bruker."
+                "en": "Choose which temperature Homey displays. \"Automatic\" follows the sensor used by the thermostat.",
+                "no": "Velg hvilken temperatur Homey skal vise. \"Automatisk\" følger føleren termostaten bruker."
               }
             },
             {
@@ -776,8 +776,8 @@
                 "no": "Varmekabelens effekt"
               },
               "hint": {
-                "en": "Enter the power from the cable label or installation papers. Homey shows it while the thermostat heats, but does not measure it. At 0, no power is shown.",
-                "no": "Skriv effekten fra kabelmerket eller installasjonspapirene. Homey viser den mens termostaten varmer, men måler den ikke. Ved 0 vises ingen effekt."
+                "en": "Enter the power from the label on the cable or from the installation papers. Homey shows it while the thermostat heats, but does not measure it. At 0, no power is shown.",
+                "no": "Skriv inn effekten fra merkingen på kabelen eller fra installasjonspapirene. Homey viser den mens termostaten varmer, men måler den ikke. Ved 0 vises ingen effekt."
               }
             }
           ]
@@ -1558,8 +1558,8 @@
                 }
               ],
               "hint": {
-                "en": "Choose which temperature Homey displays. Automatic follows the sensor used by the thermostat.",
-                "no": "Velg hvilken temperatur Homey skal vise. Automatisk følger føleren termostaten bruker."
+                "en": "Choose which temperature Homey displays. \"Automatic\" follows the sensor used by the thermostat.",
+                "no": "Velg hvilken temperatur Homey skal vise. \"Automatisk\" følger føleren termostaten bruker."
               }
             },
             {
@@ -1578,8 +1578,8 @@
                 "no": "Varmekabelens effekt"
               },
               "hint": {
-                "en": "Enter the power from the cable label or installation papers. Homey shows it while the thermostat heats, but does not measure it. At 0, no power is shown.",
-                "no": "Skriv effekten fra kabelmerket eller installasjonspapirene. Homey viser den mens termostaten varmer, men måler den ikke. Ved 0 vises ingen effekt."
+                "en": "Enter the power from the label on the cable or from the installation papers. Homey shows it while the thermostat heats, but does not measure it. At 0, no power is shown.",
+                "no": "Skriv inn effekten fra merkingen på kabelen eller fra installasjonspapirene. Homey viser den mens termostaten varmer, men måler den ikke. Ved 0 vises ingen effekt."
               }
             }
           ]
@@ -1690,7 +1690,7 @@
       },
       "insightsTitleFalse": {
         "en": "The open window function ended",
-        "no": "Åpent vindu-funksjonen er ferdig"
+        "no": "Åpent vindu-funksjonen er ikke lenger aktiv"
       },
       "icon": "/assets/capabilities/sg_window_open.svg"
     }

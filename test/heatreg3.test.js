@@ -949,12 +949,12 @@ test('the settings page by product: "added under" another driver, 2-pole in Norw
   assert.deepEqual(summaryLines('no')(no), [
     'SG Smart: 2 LEDDim Smart (kan legges til), 1 LEDDim Smart 400 2-pol (legges til under LEDDim Smart), 1 LEDDim Smart Pill (kan legges til), '
       + '1 Smart Socket (legges til under Smart Plug og Smart Socket), 1 LEDDim Smart Floor (ikke støttet ennå), '
-      + '1 Smart Plug (tilbakekalt, legges ikke til), 1 annen enhet (ikke støttet ennå). 0 av 2 svarer. Nettverkspassord: 1234.',
+      + '1 Smart Plug (tilbakekalt, kan ikke legges til), 1 annen enhet (ikke støttet ennå). 0 av 2 svarer. Nettverkspassord: 1234.',
     'SG Smart 3.0: 2 LEDDim Smart 3.0 (kan legges til), 1 HeatReg Smart 3.0 (kan legges til), 1 LEDDim Smart 2-pol 3.0 (legges til under LEDDim Smart 3.0).',
   ]);
   const en = await fetchedSummary('en', home);
   assert.equal(summaryLines('en')(en)[1],
-    'SG Smart 3.0: 2 LEDDim Smart 3.0 (can be added), 1 HeatReg Smart 3.0 (can be added), 1 LEDDim Smart 2-pole 3.0 (added under LEDDim Smart 3.0).');
+    'SG Smart 3.0: 2 LEDDim Smart 3.0 (can be added), 1 HeatReg Smart 3.0 (can be added), 1 LEDDim Smart 2-pole 3.0 (can be added under LEDDim Smart 3.0).');
   const plain = {
     number: 1, devices: 3, sg3: 3, sg3State: 'fetchAgain', sg3Groups: productGroups(trondsHome.slice(2), { sg3: true, inUse: false, driverName }),
   };

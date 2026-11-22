@@ -15,9 +15,9 @@
     },
     "found": {
       "noDimmer": "Fant ingen dreiedimmere.",
-      "noDimmerButPill": "Fant ingen dreiedimmere, men fant __products__. Gå tilbake og velg \"LEDDim Smart Pill\" for å legge til.",
+      "noDimmerButPill": "Fant ingen dreiedimmere, men fant __products__. Gå tilbake og velg \"LEDDim Smart Pill\" for å legge dem til.",
       "noPill": "Fant ingen LEDDim Smart Pill.",
-      "noPillButDimmer": "Fant ingen LEDDim Smart Pill, men fant __products__. Gå tilbake og velg \"LEDDim Smart\" for å legge til.",
+      "noPillButDimmer": "Fant ingen LEDDim Smart Pill, men fant __products__. Gå tilbake og velg \"LEDDim Smart\" for å legge dem til.",
       "noDin": "Fant ingen LEDDim Smart DIN.",
       "noPush": "Fant ingen LEDDim Smart Push.",
       "noPlug": "Fant ingen Smart Plug eller Smart Socket.",
@@ -27,13 +27,13 @@
       "goToDimmer": "Fant __products__. Gå tilbake og velg \"LEDDim Smart\" for å legge til.",
       "goToPill": "Fant __products__. Gå tilbake og velg \"LEDDim Smart Pill\" for å legge til.",
       "goToDin": "Fant __products__. Gå tilbake og velg \"LEDDim Smart DIN\" for å legge til.",
-      "goToPush": "Fant __products__. Gå tilbake og velg \"LEDDim Smart Push\" for å legge til.",
+      "goToPush": "Fant __products__. Gå tilbake og velg \"LEDDim Smart Push\" for å legge dem til.",
       "goToPlug": "Fant __products__. Gå tilbake og velg \"Smart Plug og Smart Socket\" for å legge til.",
       "goToThermostat": "Fant __products__. Gå tilbake og velg \"HeatReg Smart\" for å legge til."
     },
     "guide": {
       "title": "Før du søker",
-      "setupFirst": "Sett opp enheten i SG-appen på telefonen først. Homey legger ikke til nye enheter i nettet.",
+      "setupFirst": "Sett opp enheten i SG-appen på telefonen først. Homey legger ikke til nye enheter i nettverket.",
       "closeApp": "Lukk SG-appen på alle telefoner og nettbrett.",
       "near": "Ha Homey nær en av enhetene.",
       "password": "Nettverkspassordet er 1234 hvis du ikke har endret det i SG-appen.",
@@ -60,12 +60,12 @@
       "quietOne": "1 enhet fra SG-kontoen svarte ikke.",
       "quietMany": "__count__ enheter fra SG-kontoen svarte ikke.",
       "notFound": "Homey har ennå ikke funnet __count__ av dem.",
-      "next": "Søk igjen for å prøve de neste.",
+      "next": "Søk på nytt for å prøve de neste.",
       "searchAgain": "Søk på nytt.",
       "otherOne": "1 enhet i SG-kontoen hører til et hjem med et annet nettverkspassord og kan ikke legges til nå.",
       "otherMany": "__count__ enheter i SG-kontoen hører til et hjem med et annet nettverkspassord og kan ikke legges til nå.",
-      "closerOne": "Prøv igjen nærmere den.",
-      "closerMany": "Prøv igjen nærmere dem.",
+      "closerOne": "Flytt Homey nærmere enheten og prøv på nytt.",
+      "closerMany": "Flytt Homey nærmere enhetene og prøv på nytt.",
       "device": "__product__ __address__"
     },
     "sg3Thermostat": {
@@ -76,7 +76,7 @@
       "title": "HeatReg Smart 3.0",
       "addFirst": "Legg til termostaten i SG-appen først.",
       "near": "Ha Homey nær SG Smart 3.0-enhetene. Søket tar rundt 10 sekunder.",
-      "dimmer": "Homey hører termostaten bare når en LEDDim Smart 3.0 er lagt til."
+      "dimmer": "Homey hører termostaten gjennom en LEDDim Smart 3.0 i samme hjem. Legg til dimmeren i Homey først."
     }
   },
   "settings": {
@@ -96,7 +96,7 @@
       "countMany": "__count__ enheter",
       "csr": "SG Smart: __devices__.",
       "csrAnswering": "SG Smart: __devices__. __answering__ av __total__ svarer.",
-      "csrOtherNetwork": "SG Smart: __devices__. Annet nettverkspassord, ikke spurt.",
+      "csrOtherNetwork": "SG Smart: __devices__. De bruker et annet nettverkspassord, så Homey har ikke bedt om status.",
       "passwordFetched": "Nettverkspassord: hentet.",
       "passwordDefault": "Nettverkspassord: 1234.",
       "switches": "Brytere: __count__, ikke spurt.",
@@ -122,7 +122,7 @@
       "groupSame": "__count__ __product__ (kan legges til)",
       "group": "__count__ __product__ (legges til under __driver__)",
       "groupNotYet": "__count__ __product__ (ikke støttet ennå)",
-      "groupRecalled": "__count__ __product__ (tilbakekalt, legges ikke til)",
+      "groupRecalled": "__count__ __product__ (tilbakekalt, kan ikke legges til)",
       "groupPlain": "__count__ __product__",
       "otherOne": "1 annen enhet (ikke støttet ennå)",
       "otherMany": "__count__ andre enheter (ikke støttet ennå)",
@@ -154,10 +154,10 @@
       "rotary": "Første generasjon (Gen1, @NDxxxx) er testet og fungerer. Senere generasjoner, også TW, Master og 400 2-pol, er under utprøving.",
       "pill": ", også Micro, TW og Smart Pill ON-OFF: under utprøving.",
       "din": ", også DIN 1000 og TW: under utprøving.",
-      "push": ", også TW: av, på og dimming, under utprøving.",
+      "push": ", også TW: av, på og dimming. Under utprøving.",
       "plug": ", Smart Socket og Smart DIN 3600: under utprøving.",
       "thermostat": ": temperaturene, ønsket temperatur, av og på og forhåndsinnstillingen i Homey.",
-      "sg3": ": LEDDim Smart 3.0 er testet og fungerer. LEDDim Smart 2-pol 3.0 er under utprøving. HeatReg Smart 3.0 viser temperaturene, måltemperaturen og av og på i Homey, under utprøving. Alle krever innlogging med SG-kontoen. Andre 3.0-produkter støttes ikke ennå.",
+      "sg3": ": LEDDim Smart 3.0 er testet og fungerer. LEDDim Smart 2-pol 3.0 og HeatReg Smart 3.0 er under utprøving. Alle krever innlogging med SG-kontoen, og HeatReg Smart 3.0 trenger en LEDDim Smart 3.0 i samme hjem. Andre 3.0-produkter støttes ikke ennå.",
       "other": "Andre SG-enheter, som Floor og Pill DALI, støttes ikke ennå.",
       "report": "Fungerer ikke alt som det skal? Meld fra i forumtråden."
     },
@@ -216,8 +216,8 @@
     "notInHome": "Termostaten er ikke i hjemmet som er hentet fra SG-kontoen. Legg den til i SG-appen, og trykk \"Hent på nytt\" i innstillingene til SG LEDDim.",
     "notHeard": "Ingen kontakt med termostaten. Feil passord eller utenfor rekkevidde?",
     "shownMissing": {
-      "floor": "Ingen gulvtemperatur tilgjengelig. Velg en annen føler under Vist temperatur.",
-      "room": "Ingen romtemperatur tilgjengelig. Velg en annen føler under Vist temperatur."
+      "floor": "Ingen gulvtemperatur tilgjengelig. Velg en annen føler under \"Vist temperatur\".",
+      "room": "Ingen romtemperatur tilgjengelig. Velg en annen føler under \"Vist temperatur\"."
     },
     "fault": {
       "EEE": "Termostaten melder feil (EEE).",

@@ -171,7 +171,7 @@ test('the texts for Push: in both languages, straight quotes, and no longer amon
   assert.equal(en.pair.found.noPush, 'No LEDDim Smart Push found.');
   assert.equal(no.pair.found.noPush, 'Fant ingen LEDDim Smart Push.');
   assert.equal(en.pair.found.goToPush, 'Found __products__. Go back and select "LEDDim Smart Push" to add them.');
-  assert.equal(no.pair.found.goToPush, 'Fant __products__. Gå tilbake og velg "LEDDim Smart Push" for å legge til.');
+  assert.equal(no.pair.found.goToPush, 'Fant __products__. Gå tilbake og velg "LEDDim Smart Push" for å legge dem til.');
   for (const text of [en.pair.found.noPush, no.pair.found.noPush, en.pair.found.goToPush, no.pair.found.goToPush,
     en.settings.otherDevice.push, no.settings.otherDevice.push]) {
     assert.doesNotMatch(text, /[«»“”]/);

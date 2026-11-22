@@ -64,8 +64,8 @@
       "searchAgain": "Search again.",
       "otherOne": "1 device in your SG account is in a home with a different network password and cannot be added now.",
       "otherMany": "__count__ devices in your SG account are in a home with a different network password and cannot be added now.",
-      "closerOne": "Try again closer to it.",
-      "closerMany": "Try again closer to them.",
+      "closerOne": "Move Homey closer to the device and try again.",
+      "closerMany": "Move Homey closer to the devices and try again.",
       "device": "__product__ __address__"
     },
     "sg3Thermostat": {
@@ -76,7 +76,7 @@
       "title": "HeatReg Smart 3.0",
       "addFirst": "Add the thermostat in the SG app first.",
       "near": "Keep Homey close to the SG Smart 3.0 devices. The search takes about 10 seconds.",
-      "dimmer": "Homey hears the thermostat only when a LEDDim Smart 3.0 has been added."
+      "dimmer": "Homey hears the thermostat through a LEDDim Smart 3.0 in the same home. Add the dimmer in Homey first."
     }
   },
   "settings": {
@@ -96,7 +96,7 @@
       "countMany": "__count__ devices",
       "csr": "SG Smart: __devices__.",
       "csrAnswering": "SG Smart: __devices__. __answering__ of __total__ respond.",
-      "csrOtherNetwork": "SG Smart: __devices__. Another network password, not asked.",
+      "csrOtherNetwork": "SG Smart: __devices__. They use a different network password, so Homey has not requested their status.",
       "passwordFetched": "Network password: fetched.",
       "passwordDefault": "Network password: 1234.",
       "switches": "Switches: __count__, not asked.",
@@ -120,9 +120,9 @@
       "sg3FetchAgain": "SG Smart 3.0: __devices__. Tap \"Fetch again\".",
       "sg3NeedsDimmer": "SG Smart 3.0: __devices__. Needs a LEDDim Smart 3.0 in the same home.",
       "groupSame": "__count__ __product__ (can be added)",
-      "group": "__count__ __product__ (added under __driver__)",
+      "group": "__count__ __product__ (can be added under __driver__)",
       "groupNotYet": "__count__ __product__ (not supported yet)",
-      "groupRecalled": "__count__ __product__ (recalled, not added)",
+      "groupRecalled": "__count__ __product__ (recalled, cannot be added)",
       "groupPlain": "__count__ __product__",
       "otherOne": "1 other device (not supported yet)",
       "otherMany": "__count__ other devices (not supported yet)",
@@ -154,10 +154,10 @@
       "rotary": "First generation (Gen1, @NDxxxx) has been tested and works. Later generations, including TW, Master and 400 2-pole, are being tested.",
       "pill": ", including Micro, TW and Smart Pill ON-OFF: being tested.",
       "din": ", including DIN 1000 and TW: being tested.",
-      "push": ", including TW: on, off and dimming, being tested.",
+      "push": ", including TW: on, off and dimming. Being tested.",
       "plug": ", Smart Socket and Smart DIN 3600: being tested.",
       "thermostat": ": the temperatures, the target temperature, on and off and the preset in Homey.",
-      "sg3": ": LEDDim Smart 3.0 has been tested and works. LEDDim Smart 2-pole 3.0 is being tested. HeatReg Smart 3.0 shows the temperatures, the target temperature and on and off in Homey, being tested. All need you to log in with your SG account. Other 3.0 products are not supported yet.",
+      "sg3": ": LEDDim Smart 3.0 has been tested and works. LEDDim Smart 2-pole 3.0 and HeatReg Smart 3.0 are being tested. All need you to log in with your SG account, and HeatReg Smart 3.0 needs a LEDDim Smart 3.0 in the same home. Other 3.0 products are not supported yet.",
       "other": "Other SG devices, such as Floor and Pill DALI, are not supported yet.",
       "report": "Something not working? Report it in the forum thread."
     },
@@ -216,8 +216,8 @@
     "notInHome": "The thermostat is not in the home fetched from your SG account. Add it in the SG app, then press \"Fetch again\" in the SG LEDDim settings.",
     "notHeard": "No contact with the thermostat. Wrong password or out of range?",
     "shownMissing": {
-      "floor": "No floor temperature available. Select another sensor under Displayed temperature.",
-      "room": "No room temperature available. Select another sensor under Displayed temperature."
+      "floor": "No floor temperature available. Select another sensor under \"Displayed temperature\".",
+      "room": "No room temperature available. Select another sensor under \"Displayed temperature\"."
     },
     "fault": {
       "EEE": "The thermostat reports a fault (EEE).",

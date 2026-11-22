@@ -14,7 +14,7 @@
   },
   "insightsTitleFalse": {
     "en": "The open window function ended",
-    "no": "Åpent vindu-funksjonen er ferdig"
+    "no": "Åpent vindu-funksjonen er ikke lenger aktiv"
   },
   "icon": "/assets/capabilities/sg_window_open.svg"
 }

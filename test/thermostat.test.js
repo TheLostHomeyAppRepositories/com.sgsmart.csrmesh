@@ -131,8 +131,8 @@ test('the settings: "Sensor" with Automatic first and by default, "Displayed tem
   assert.deepEqual(byId.heating_cable_power.label, { en: 'Heating cable power', no: 'Varmekabelens effekt' });
   assert.deepEqual(byId.heating_cable_power.units, { en: 'W', no: 'W' });
   assert.deepEqual(byId.heating_cable_power.hint, {
-    en: 'Enter the power from the cable label or installation papers. Homey shows it while the thermostat heats, but does not measure it. At 0, no power is shown.',
-    no: 'Skriv effekten fra kabelmerket eller installasjonspapirene. Homey viser den mens termostaten varmer, men måler den ikke. Ved 0 vises ingen effekt.',
+    en: 'Enter the power from the label on the cable or from the installation papers. Homey shows it while the thermostat heats, but does not measure it. At 0, no power is shown.',
+    no: 'Skriv inn effekten fra merkingen på kabelen eller fra installasjonspapirene. Homey viser den mens termostaten varmer, men måler den ikke. Ved 0 vises ingen effekt.',
   });
   for (const text of [byId.sensor.hint.en, byId.sensor.hint.no]) assert.doesNotMatch(text, /[«»“”–—]/);
 });
@@ -182,16 +182,16 @@ test('the setting "Displayed temperature": Automatic by default, then the floor 
   assert.deepEqual(card.title, { en: 'The room temperature changed', no: 'Romtemperaturen endret seg' });
   assert.deepEqual(card.tokens.map((t) => [t.name, t.type]), [['measure_temperature.room', 'number']]);
   assert.deepEqual(setting.hint, {
-    en: 'Choose which temperature Homey displays. Automatic follows the sensor used by the thermostat.',
-    no: 'Velg hvilken temperatur Homey skal vise. Automatisk følger føleren termostaten bruker.',
+    en: 'Choose which temperature Homey displays. "Automatic" follows the sensor used by the thermostat.',
+    no: 'Velg hvilken temperatur Homey skal vise. "Automatisk" følger føleren termostaten bruker.',
   });
   assert.deepEqual(JSON.parse(read('locales/en.json')).thermostat.shownMissing, {
-    floor: 'No floor temperature available. Select another sensor under Displayed temperature.',
-    room: 'No room temperature available. Select another sensor under Displayed temperature.',
+    floor: 'No floor temperature available. Select another sensor under "Displayed temperature".',
+    room: 'No room temperature available. Select another sensor under "Displayed temperature".',
   });
   assert.deepEqual(JSON.parse(read('locales/no.json')).thermostat.shownMissing, {
-    floor: 'Ingen gulvtemperatur tilgjengelig. Velg en annen føler under Vist temperatur.',
-    room: 'Ingen romtemperatur tilgjengelig. Velg en annen føler under Vist temperatur.',
+    floor: 'Ingen gulvtemperatur tilgjengelig. Velg en annen føler under "Vist temperatur".',
+    room: 'Ingen romtemperatur tilgjengelig. Velg en annen føler under "Vist temperatur".',
   });
   const texts = [setting.hint.en, setting.hint.no];
   for (const lang of ['en', 'no']) texts.push(...Object.values(JSON.parse(read(`locales/${lang}.json`)).thermostat.shownMissing));
@@ -1212,7 +1212,7 @@ test('the open window function and the floor limit: their texts, and none says a
     [{ en: 'Reached', no: 'Nådd' }, { en: 'Not reached', no: 'Ikke nådd' }]);
   const cards = Object.fromEntries(Object.values(thermostatCards()).flat().map((c) => [c.id, c.title]));
   assert.deepEqual(cards.sg_window_open_true, { en: 'The open window function started', no: 'Åpent vindu-funksjonen slo inn' });
-  assert.deepEqual(cards.sg_window_open_false, { en: 'The open window function ended', no: 'Åpent vindu-funksjonen er ferdig' });
+  assert.deepEqual(cards.sg_window_open_false, { en: 'The open window function ended', no: 'Åpent vindu-funksjonen er ikke lenger aktiv' });
   assert.deepEqual(cards.sg_window_open_is, { en: 'The open window function !{{is|is not}} active', no: 'Åpent vindu-funksjonen !{{er|er ikke}} aktiv' });
   assert.deepEqual(cards.sg_floor_limit_false, { en: 'Floor limit no longer reached', no: 'Gulvgrensen er ikke lenger nådd' });
   const texts = [read('.homeycompose/capabilities/sg_window_open.json'), read('drivers/sg_thermostat/driver.compose.json'),

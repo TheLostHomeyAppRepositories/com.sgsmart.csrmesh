@@ -230,10 +230,10 @@ test('no text asks for other SG devices named @ND: only the first generation LED
     rotary: 'Første generasjon (Gen1, @NDxxxx) er testet og fungerer. Senere generasjoner, også TW, Master og 400 2-pol, er under utprøving.',
     pill: ', også Micro, TW og Smart Pill ON-OFF: under utprøving.',
     din: ', også DIN 1000 og TW: under utprøving.',
-    push: ', også TW: av, på og dimming, under utprøving.',
+    push: ', også TW: av, på og dimming. Under utprøving.',
     plug: ', Smart Socket og Smart DIN 3600: under utprøving.',
     thermostat: ': temperaturene, ønsket temperatur, av og på og forhåndsinnstillingen i Homey.',
-    sg3: ': LEDDim Smart 3.0 er testet og fungerer. LEDDim Smart 2-pol 3.0 er under utprøving. HeatReg Smart 3.0 viser temperaturene, måltemperaturen og av og på i Homey, under utprøving. Alle krever innlogging med SG-kontoen. Andre 3.0-produkter støttes ikke ennå.',
+    sg3: ': LEDDim Smart 3.0 er testet og fungerer. LEDDim Smart 2-pol 3.0 og HeatReg Smart 3.0 er under utprøving. Alle krever innlogging med SG-kontoen, og HeatReg Smart 3.0 trenger en LEDDim Smart 3.0 i samme hjem. Andre 3.0-produkter støttes ikke ennå.',
     other: 'Andre SG-enheter, som Floor og Pill DALI, støttes ikke ennå.',
     report: 'Fungerer ikke alt som det skal? Meld fra i forumtråden.',
   });
@@ -242,10 +242,10 @@ test('no text asks for other SG devices named @ND: only the first generation LED
     rotary: 'First generation (Gen1, @NDxxxx) has been tested and works. Later generations, including TW, Master and 400 2-pole, are being tested.',
     pill: ', including Micro, TW and Smart Pill ON-OFF: being tested.',
     din: ', including DIN 1000 and TW: being tested.',
-    push: ', including TW: on, off and dimming, being tested.',
+    push: ', including TW: on, off and dimming. Being tested.',
     plug: ', Smart Socket and Smart DIN 3600: being tested.',
     thermostat: ': the temperatures, the target temperature, on and off and the preset in Homey.',
-    sg3: ': LEDDim Smart 3.0 has been tested and works. LEDDim Smart 2-pole 3.0 is being tested. HeatReg Smart 3.0 shows the temperatures, the target temperature and on and off in Homey, being tested. All need you to log in with your SG account. Other 3.0 products are not supported yet.',
+    sg3: ': LEDDim Smart 3.0 has been tested and works. LEDDim Smart 2-pole 3.0 and HeatReg Smart 3.0 are being tested. All need you to log in with your SG account, and HeatReg Smart 3.0 needs a LEDDim Smart 3.0 in the same home. Other 3.0 products are not supported yet.',
     other: 'Other SG devices, such as Floor and Pill DALI, are not supported yet.',
     report: 'Something not working? Report it in the forum thread.',
   });
@@ -265,8 +265,8 @@ test('no text asks for other SG devices named @ND: only the first generation LED
   // 2.8.0: what is tested and works, and what is not tested yet, as Trond
   // worded the store texts (2026-11-08), without URLs; LEDDim Smart DIN and
   // Smart DIN 3600 added (2026-11-09).
-  assert.match(read('README.txt'), /The first generation \(@NDxxxx\) and LEDDim Smart 3\.0 have been tested and work\. LEDDim Smart generations 2 to 4, LEDDim Smart Pill, LEDDim Smart DIN, LEDDim Smart Push, Smart Plug, Smart Socket, Smart DIN 3600, HeatReg Smart, LEDDim Smart 2-pole 3\.0 and HeatReg Smart 3\.0 have not been tested yet\./);
-  assert.match(read('README.no.txt'), /Første generasjon \(@NDxxxx\) og LEDDim Smart 3\.0 er testet og virker\. LEDDim Smart generasjon 2 til 4, LEDDim Smart Pill, LEDDim Smart DIN, LEDDim Smart Push, Smart Plug, Smart Socket, Smart DIN 3600, HeatReg Smart, LEDDim Smart 2-pol 3\.0 og HeatReg Smart 3\.0 er ikke testet ennå\./);
+  assert.match(read('README.txt'), /The first generation \(@NDxxxx\) and LEDDim Smart 3\.0 have been tested and work\. LEDDim Smart generations 2 to 4, LEDDim Smart Pill, LEDDim Smart DIN, LEDDim Smart Push, Smart Plug, Smart Socket, Smart DIN 3600, HeatReg Smart, LEDDim Smart 2-pole 3\.0 and HeatReg Smart 3\.0 are being tested\./);
+  assert.match(read('README.no.txt'), /Første generasjon \(@NDxxxx\) og LEDDim Smart 3\.0 er testet og virker\. LEDDim Smart generasjon 2 til 4, LEDDim Smart Pill, LEDDim Smart DIN, LEDDim Smart Push, Smart Plug, Smart Socket, Smart DIN 3600, HeatReg Smart, LEDDim Smart 2-pol 3\.0 og HeatReg Smart 3\.0 er under utprøving\./);
   assert.doesNotMatch(read('README.txt') + read('README.no.txt'), /https?:|www\./, 'no URLs');
   // Two paragraphs at most, and the contributors in the manifest, not here
   // (Athom: app-store/guidelines.md, 1.3; Trond 2026-11-08).
@@ -376,9 +376,9 @@ test('where other products go (pair.found): what was not found, what was, and wh
   const pairing = read('lib/csrPairing.js');
   for (const key of Object.keys(en.pair.found)) assert.ok(pairing.includes(`'pair.found.${key}'`), `pair.found.${key} is not used`);
   const f = { en: en.pair.found, no: no.pair.found };
-  assert.equal(f.no.noDimmerButPill, 'Fant ingen dreiedimmere, men fant __products__. Gå tilbake og velg "LEDDim Smart Pill" for å legge til.');
+  assert.equal(f.no.noDimmerButPill, 'Fant ingen dreiedimmere, men fant __products__. Gå tilbake og velg "LEDDim Smart Pill" for å legge dem til.');
   assert.equal(f.en.noDimmerButPill, 'No rotary dimmers found, but found __products__. Go back and select "LEDDim Smart Pill" to add them.');
-  assert.equal(f.no.noPillButDimmer, 'Fant ingen LEDDim Smart Pill, men fant __products__. Gå tilbake og velg "LEDDim Smart" for å legge til.');
+  assert.equal(f.no.noPillButDimmer, 'Fant ingen LEDDim Smart Pill, men fant __products__. Gå tilbake og velg "LEDDim Smart" for å legge dem til.');
   assert.equal(f.en.noPillButDimmer, 'No LEDDim Smart Pill found, but found __products__. Go back and select "LEDDim Smart" to add them.');
   assert.equal(`${f.no.noDimmer} ${f.no.notYet}`, 'Fant ingen dreiedimmere. Fant __products__, som ikke kan legges til ennå.');
   assert.equal(`${f.en.noDimmer} ${f.en.notYet}`, 'No rotary dimmers found. Found __products__, which cannot be added yet.');
@@ -442,7 +442,7 @@ test('the guide before the search: the same view in every driver that searches, 
   }
   // First: the device must be set up in the SG app; Homey adds none to the network.
   assert.deepEqual([...guide.matchAll(/<li data-step="([A-Za-z]+)">/g)].map((m) => m[1]), ['setupFirst', 'closeApp', 'near', 'password']);
-  assert.equal(no.pair.guide.setupFirst, 'Sett opp enheten i SG-appen på telefonen først. Homey legger ikke til nye enheter i nettet.');
+  assert.equal(no.pair.guide.setupFirst, 'Sett opp enheten i SG-appen på telefonen først. Homey legger ikke til nye enheter i nettverket.');
   assert.equal(en.pair.guide.setupFirst, 'Set up the device in the SG app on your phone first. Homey does not add new devices to the network.');
   assert.equal(no.pair.guide.title, 'Før du søker');
   assert.equal(en.pair.guide.title, 'Before you search');
@@ -626,10 +626,10 @@ test('the texts of 2026-11-07, as Trond worded them: the settings page, the pair
     // Trond 2026-11-10: how many not found in the mesh yet, the next ones
     // over DIRECT_MAX, and search again when all are found.
     'pair.account.notFound': ['Homey har ennå ikke funnet __count__ av dem.', 'Homey has not found __count__ of them yet.'],
-    'pair.account.next': ['Søk igjen for å prøve de neste.', 'Search again to try the next ones.'],
+    'pair.account.next': ['Søk på nytt for å prøve de neste.', 'Search again to try the next ones.'],
     'pair.account.searchAgain': ['Søk på nytt.', 'Search again.'],
-    'pair.account.closerOne': ['Prøv igjen nærmere den.', 'Try again closer to it.'],
-    'pair.account.closerMany': ['Prøv igjen nærmere dem.', 'Try again closer to them.'],
+    'pair.account.closerOne': ['Flytt Homey nærmere enheten og prøv på nytt.', 'Move Homey closer to the device and try again.'],
+    'pair.account.closerMany': ['Flytt Homey nærmere enhetene og prøv på nytt.', 'Move Homey closer to the devices and try again.'],
     'device.sg3NoNetwork': ['Logg inn med SG-kontoen i innstillingene til SG LEDDim.', 'Log in with your SG account in the SG LEDDim settings.'],
   };
   const get = (locale, key) => key.split('.').reduce((o, k) => o[k], locale);

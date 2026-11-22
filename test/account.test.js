@@ -872,16 +872,16 @@ test('pairing: the texts for the account\'s devices that did not answer, as the 
   assert.deepEqual(seen, {
     'no 17': 'Fant ingen dimmere. Har du LEDDim Smart 3.0, velg LEDDim Smart 3.0 i stedet. Lukk SG-appen på telefonen. '
       + 'Prøv igjen nærmere en dimmer. Hjelper ikke det, send en diagnoserapport: Innstillinger, Apper, SG LEDDim. '
-      + '17 enheter fra SG-kontoen svarte ikke. Søk igjen for å prøve de neste.',
-    'no 1': '1 enhet fra SG-kontoen svarte ikke. Prøv igjen nærmere den.',
-    'no 12, 5 found': '12 enheter fra SG-kontoen svarte ikke. Homey har ennå ikke funnet 7 av dem. Prøv igjen nærmere dem. '
-      + 'Søk igjen for å prøve de neste.',
+      + '17 enheter fra SG-kontoen svarte ikke. Søk på nytt for å prøve de neste.',
+    'no 1': '1 enhet fra SG-kontoen svarte ikke. Flytt Homey nærmere enheten og prøv på nytt.',
+    'no 12, 5 found': '12 enheter fra SG-kontoen svarte ikke. Homey har ennå ikke funnet 7 av dem. Flytt Homey nærmere enhetene og prøv på nytt. '
+      + 'Søk på nytt for å prøve de neste.',
     'no 3, all found': '3 enheter fra SG-kontoen svarte ikke. Søk på nytt.',
     'en 17': 'No dimmers found. If you have LEDDim Smart 3.0, select LEDDim Smart 3.0 instead. Close the SG app on your phone. '
       + 'Try again closer to a dimmer. If that doesn\'t help, send a diagnostic report: Settings, Apps, SG LEDDim. '
       + '17 devices from your SG account did not respond. Search again to try the next ones.',
-    'en 1': '1 device from your SG account did not respond. Try again closer to it.',
-    'en 12, 5 found': '12 devices from your SG account did not respond. Homey has not found 7 of them yet. Try again closer to them. '
+    'en 1': '1 device from your SG account did not respond. Move Homey closer to the device and try again.',
+    'en 12, 5 found': '12 devices from your SG account did not respond. Homey has not found 7 of them yet. Move Homey closer to the devices and try again. '
       + 'Search again to try the next ones.',
     'en 3, all found': '3 devices from your SG account did not respond. Search again.',
   });

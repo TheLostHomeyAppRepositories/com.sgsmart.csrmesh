@@ -167,7 +167,7 @@ test('two homes on the same password (both 1234, or both their own): all of it a
     assert.equal(app.account.deviceLocations().size, 4);
     assert.equal(otherNetworkCount(driver, 'sg_pill'), 0);
     const outcome = await pairingOutcome(driver, app);
-    assert.equal(outcome.text, '4 enheter fra SG-kontoen svarte ikke. Prøv igjen nærmere dem.', 'the text as before, nothing about another password');
+    assert.equal(outcome.text, '4 enheter fra SG-kontoen svarte ikke. Flytt Homey nærmere enhetene og prøv på nytt.', 'the text as before, nothing about another password');
     assert.deepEqual(everyoneLocs(app), [0, LOC_B, LOC_A]);
     assert.deepEqual(directTo(app), [0x9c01, 0x9c02, 0x9d01, 0x9d02]);
   }
@@ -182,7 +182,7 @@ test('two homes on different passwords, nothing paired: the app speaks the home 
   assert.deepEqual([...app.account.deviceLocations().keys()], [0x9d01, 0x9d02, 0x9d03, 0x9d04]);
   assert.equal(otherNetworkCount(driver, 'sg_pill'), 3);
   const outcome = await pairingOutcome(driver, app);
-  assert.equal(outcome.text, '4 enheter fra SG-kontoen svarte ikke. Prøv igjen nærmere dem. '
+  assert.equal(outcome.text, '4 enheter fra SG-kontoen svarte ikke. Flytt Homey nærmere enhetene og prøv på nytt. '
     + '3 enheter i SG-kontoen hører til et hjem med et annet nettverkspassord og kan ikke legges til nå.');
   assert.deepEqual([...new Set(ff10(app).map((s) => s.key))], ['B']);
   assert.deepEqual(everyoneLocs(app), [0, LOC_B]);
@@ -247,8 +247,8 @@ test('the check asks only the homes on the app\'s network password; another home
   assert.ok(line.startsWith('[SG account] check: 0 of 2 answer, '), line);
   assert.ok(line.includes(', 0 uncertain (not counted), 3 in 1 home(s) on another network password, not asked, 0 SG Smart 3.0 not asked'), line);
   // The page's text for it, in both languages.
-  assert.equal(translator('no')('settings.account.csrOtherNetwork', { devices: '3 enheter' }), 'SG Smart: 3 enheter. Annet nettverkspassord, ikke spurt.');
-  assert.equal(translator('en')('settings.account.csrOtherNetwork', { devices: '3 devices' }), 'SG Smart: 3 devices. Another network password, not asked.');
+  assert.equal(translator('no')('settings.account.csrOtherNetwork', { devices: '3 enheter' }), 'SG Smart: 3 enheter. De bruker et annet nettverkspassord, så Homey har ikke bedt om status.');
+  assert.equal(translator('en')('settings.account.csrOtherNetwork', { devices: '3 devices' }), 'SG Smart: 3 devices. They use a different network password, so Homey has not requested their status.');
   // Homes on one password: all asked, none marked, and the line as before.
   const same = makeApp({ homes: [home(LOC_A, null, [0x8101]), home(LOC_B, null, [0x8201])], paired: [0x8101] });
   await run(same.app, same.app.account._check(same.app.account._run));
