@@ -221,6 +221,33 @@ test('the thermostat\'s acknowledgement counts from before the send, the time fo
   assert.equal(none.listenerCount('message'), 1);
 });
 
+test('the thermostat\'s acknowledgement says when it was heard (at): while the command waited in the queue, or after the send', async () => {
+  const ackOf = { src: 0x5a01, opcode: sg.OP_SG_STATUS, parameters: Buffer.from([0x18, 0x01, 42, 0x00, 0x7f, 0x80, 0]) };
+  const early = slowSession(300);
+  const client = new SgClient(early, { ids: new CommandIds({ randomInt: () => 41 }) });
+  const sending = client.setThermostat(0x5a01, sg.KIND_THERMOSTAT_POWER, false, { ackMs: 200 });
+  let emittedAt = null;
+  later(100).then(() => {
+    emittedAt = Date.now();
+    early.emit('message', ackOf);
+  });
+  const heard = await sending;
+  const doneAt = Date.now();
+  assert.equal(typeof heard.ack.at, 'number');
+  assert.ok(Math.abs(heard.ack.at - emittedAt) <= 2, `when heard: ${heard.ack.at - emittedAt} ms off`);
+  assert.ok(doneAt - heard.ack.at >= 150, 'well before the send was done');
+  const after = slowSession(50);
+  const second = new SgClient(after, { ids: new CommandIds({ randomInt: () => 41 }) });
+  const waiting = second.setThermostat(0x5a01, sg.KIND_THERMOSTAT_POWER, false, { ackMs: 200 });
+  let laterAt = null;
+  later(100).then(() => {
+    laterAt = Date.now();
+    after.emit('message', ackOf);
+  });
+  const result = await waiting;
+  assert.ok(Math.abs(result.ack.at - laterAt) <= 2, `when heard: ${result.ack.at - laterAt} ms off`);
+});
+
 test('HeatReg Smart 3.0 is type 3021 in its own driver, never a bridge; the 3.0 dimmers stay in LEDDim Smart 3.0', () => {
   assert.deepEqual(SG3_PRODUCTS[3021], { name: 'HeatReg Smart 3.0', driver: 'sg3_thermostat', bridge: false });
   assert.equal(sg3CanBeBridge(3021), false);
@@ -420,6 +447,26 @@ test('an older change\'s acknowledgement that comes last is only logged: off and
   assert.deepEqual(sent, [[0x5a01, { power: false }], [0x5a01, { power: true }], [0x5a01, { power: false }]], 'it acknowledged on last');
   assert.ok(device.logs.includes('on from Homey: acknowledged by the thermostat (1)'), device.logs.join('\n'));
   assert.ok(device.logs.includes('off from Homey: acknowledged by the thermostat (0), after a newer change: only logged'), device.logs.join('\n'));
+});
+
+test('an acknowledgement heard before a newer status is only logged: off, its acknowledgement, a status with on, then the send done; a new off is sent', async () => {
+  const { device, controller, sent, status, release } = await thermostat();
+  status();
+  await device.listened.onoff(false);
+  // Heard while the send was still under way, before the status below.
+  const heardAt = Date.now() - 5;
+  status({ on: true });
+  controller.answer = () => ({ acked: true, segments: 2, ack: { values: [0], refused: false, ms: 300, at: heardAt } });
+  await release();
+  assert.deepEqual([device.getCapabilityValue('onoff'), device.getCapabilityValue('thermostat_mode')], [true, 'heat'], 'as the status said');
+  await device.listened.onoff(false);
+  assert.deepEqual(sent, [[0x5a01, { power: false }], [0x5a01, { power: false }]], 'its status says on, so off is sent');
+  assert.ok(device.logs.includes('off from Homey: acknowledged by the thermostat (0), before a newer status: only logged'), device.logs.join('\n'));
+  // An acknowledgement heard after the last status counts as before.
+  controller.answer = () => ({ acked: true, segments: 2, ack: { values: [0], refused: false, ms: 300, at: Date.now() + 5 } });
+  await release();
+  await device.listened.onoff(false);
+  assert.equal(sent.length, 2, 'it acknowledged off after its last status: nothing sent');
 });
 
 test('a preset chosen while a set point waits: the set point is not sent, only the preset', async () => {

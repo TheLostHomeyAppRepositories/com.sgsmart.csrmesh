@@ -173,6 +173,32 @@ test('the home of the 3.0 devices in Homey is used, else the first with a device
   assert.equal(alone.account.sg3Network(), null, 'not even with the thermostat in Homey');
 });
 
+// A 3.0 device in Homey that can carry the link (a dimmer), of the home with
+// this key.
+const bridgeInHomey = (homeKey, address = 0x0006) => ({ ...inHomey(homeKey, address), canBeSg3Bridge: () => true });
+
+test('a dimmer in Homey with the home\'s key makes a home with HeatReg Smart 3.0 alone in the account a network: added in the SG app after the last fetch, paired from the scan', async () => {
+  const thermostatOnly = home({ homeKey: THIRD_HOME_KEY, devices: [{ meshId: 0x0005, type: 3021, name: null, certain: true }] });
+  const alone = await fetchedApp([thermostatOnly]);
+  alone._devices = () => [inHomey(THIRD_HOME_KEY, 0x0005), bridgeInHomey(THIRD_HOME_KEY)];
+  const network = alone.account.sg3Network();
+  assert.equal(network && network.homeKey, THIRD_HOME_KEY);
+  assert.deepEqual(network.devices, [{ meshId: 0x0005, type: 3021, name: null }]);
+  assert.deepEqual(network.bridges, [], 'the account does not know the dimmer: the controller takes it from Homey');
+  assert.deepEqual(alone.account.summary().homes.map((shown) => shown.sg3State), ['ready'], 'not needsDimmer');
+  // With two homes: the one of the devices in Homey.
+  const app = await fetchedApp([home({ homeKey: OTHER_HOME_KEY }), thermostatOnly]);
+  app._devices = () => [bridgeInHomey(THIRD_HOME_KEY)];
+  assert.equal(app.account.sg3Network().homeKey, THIRD_HOME_KEY);
+  assert.deepEqual(app.account.summary().homes.map((shown) => shown.sg3State), ['later', 'ready']);
+  // A dimmer of another home, or one being deleted, does not count.
+  app._devices = () => [bridgeInHomey(HOME_KEY)];
+  assert.equal(app.account.sg3Network().homeKey, OTHER_HOME_KEY);
+  assert.deepEqual(app.account.summary().homes.map((shown) => shown.sg3State), ['ready', 'needsDimmer']);
+  app._devices = () => [{ ...bridgeInHomey(THIRD_HOME_KEY), getSg3Address: () => null }];
+  assert.equal(app.account.sg3Network().homeKey, OTHER_HOME_KEY);
+});
+
 test('kept before the home\'s key: no network, and the log says to fetch again; "Forget SG account" leaves none', async () => {
   const { homeKey, ...old } = home();
   const app = sg3App({ kept: { fetchedAt: '2026-11-04T05:40:00.000Z', homes: [old], check: null } });
