@@ -13,12 +13,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { EventEmitter } = require('events');
+const timers = require('node:timers');
 
 const fake = require('./helpers/fake-homey');
 
 fake.install();
 
 const sg = require('../lib/sg3/protocol');
+const { SgClient, CommandIds } = require('../lib/sg3/client');
 const { SG3_PRODUCTS, sg3CanBeBridge } = require('../lib/sgProducts');
 const SG3Device = require('../lib/SG3Device');
 const SG3ThermostatDevice = require('../lib/SG3ThermostatDevice');
@@ -159,6 +161,66 @@ test('no command of kind 0x1D is built: the answer to it is not used', () => {
   assert.doesNotMatch(read('lib/sg3/protocol.js'), /0x1d|KIND_THERMOSTAT_(GET|READ|QUERY)/i);
 });
 
+// A session whose send waits sendMs (as behind earlier frames in the queue,
+// queuedMs of it), and that hears what the test emits.
+function slowSession(sendMs) {
+  const session = Object.assign(new EventEmitter(), { address: 0x7f80 });
+  session.waitFor = (predicate, timeoutMs) => new Promise((resolve, reject) => {
+    let timer = null;
+    const onMessage = (message) => {
+      if (!predicate(message)) return;
+      timers.clearTimeout(timer);
+      session.off('message', onMessage);
+      resolve(message);
+    };
+    timer = timers.setTimeout(() => {
+      session.off('message', onMessage);
+      reject(new Error(`no answer within ${timeoutMs} ms`));
+    }, timeoutMs);
+    session.on('message', onMessage);
+  });
+  session.sendAccess = (dst, payload, options) => new Promise((resolve) => {
+    timers.setTimeout(() => resolve({
+      seqAuth: 1, segments: 2, acked: true, ackMissing: null, writes: 2, writeMs: 20, queuedMs: sendMs - 20, options,
+    }), sendMs);
+  });
+  return session;
+}
+const later = (ms) => new Promise((resolve) => {
+  timers.setTimeout(resolve, ms);
+});
+
+test('the thermostat\'s acknowledgement counts from before the send, the time for it from when the send is done, and ms from the send', async () => {
+  const ackOf = { src: 0x5a01, opcode: sg.OP_SG_STATUS, parameters: Buffer.from([0x19, 0x01, 42, 0x00, 0x7f, 0x80, 21, 5]) };
+  // Done after 300 ms in the queue; the acknowledgement 50 ms after that,
+  // with 200 ms to wait for it.
+  const session = slowSession(300);
+  const client = new SgClient(session, { ids: new CommandIds({ randomInt: () => 41 }) });
+  const sending = client.setThermostat(0x5a01, sg.KIND_THERMOSTAT_SET_POINT, 21.5, { ackMs: 200 });
+  later(350).then(() => session.emit('message', ackOf));
+  const result = await sending;
+  assert.ok(result.ack, 'counted: the time ran from when the send was done');
+  assert.deepEqual(result.ack.values, [21, 5]);
+  assert.ok(result.ack.ms < 200, `from the send, not from the queue: ${result.ack.ms} ms`);
+  assert.equal(result.options.segmented, true);
+  // Heard while the command still waits in the queue.
+  const early = slowSession(300);
+  const second = new SgClient(early, { ids: new CommandIds({ randomInt: () => 41 }) });
+  const waiting = second.setThermostat(0x5a01, sg.KIND_THERMOSTAT_SET_POINT, 21.5, { ackMs: 200 });
+  later(100).then(() => early.emit('message', ackOf));
+  const heard = await waiting;
+  assert.ok(heard.ack, 'counted though it came before the send was done');
+  assert.equal(heard.ack.ms, 0);
+  assert.equal(early.listenerCount('message'), 1, 'only the client\'s own listener is left');
+  // None: null, after the time from when the send is done.
+  const none = slowSession(50);
+  const third = new SgClient(none, { ids: new CommandIds({ randomInt: () => 41 }) });
+  const started = Date.now();
+  assert.equal((await third.setThermostat(0x5a01, sg.KIND_THERMOSTAT_SET_POINT, 21.5, { ackMs: 100 })).ack, null);
+  assert.ok(Date.now() - started >= 145, 'the send, then the time');
+  assert.equal(none.listenerCount('message'), 1);
+});
+
 test('HeatReg Smart 3.0 is type 3021 in its own driver, never a bridge; the 3.0 dimmers stay in LEDDim Smart 3.0', () => {
   assert.deepEqual(SG3_PRODUCTS[3021], { name: 'HeatReg Smart 3.0', driver: 'sg3_thermostat', bridge: false });
   assert.equal(sg3CanBeBridge(3021), false);
@@ -192,9 +254,10 @@ async function thermostat({ settings = {}, kept = {} } = {}) {
       };
     },
   });
-  // Lets the oldest send answer, and what follows it run.
-  const release = async () => {
-    waiting.shift()();
+  // Lets the oldest send answer (or the one at index among those waiting),
+  // and what follows it run.
+  const release = async (index = 0) => {
+    waiting.splice(index, 1)[0]();
     for (let i = 0; i < 5; i += 1) await new Promise((resolve) => setImmediate(resolve));
   };
   const app = { sg3: () => controller, sg3HomeKey: () => HOME_KEY };
@@ -343,6 +406,63 @@ test('an older send\'s missing acknowledgement does not undo a newer change of t
   assert.equal(device.getCapabilityValue('onoff'), true);
   await release();
   assert.equal(device.getCapabilityValue('onoff'), true);
+});
+
+test('an older change\'s acknowledgement that comes last is only logged: off and on, on answered first, and a new off is sent', async () => {
+  const { device, sent, status, release } = await thermostat();
+  status();
+  await device.listened.onoff(false);
+  await device.listened.onoff(true);
+  await release(1);
+  await release(0);
+  assert.deepEqual([device.getCapabilityValue('onoff'), device.getCapabilityValue('thermostat_mode')], [true, 'heat']);
+  await device.listened.onoff(false);
+  assert.deepEqual(sent, [[0x5a01, { power: false }], [0x5a01, { power: true }], [0x5a01, { power: false }]], 'it acknowledged on last');
+  assert.ok(device.logs.includes('on from Homey: acknowledged by the thermostat (1)'), device.logs.join('\n'));
+  assert.ok(device.logs.includes('off from Homey: acknowledged by the thermostat (0), after a newer change: only logged'), device.logs.join('\n'));
+});
+
+test('a preset chosen while a set point waits: the set point is not sent, only the preset', async () => {
+  const { device, sent, status, homey, release } = await thermostat();
+  status();
+  await device.listened.target_temperature(25);
+  await device.listened.sg_heat_preset('eco');
+  homey.runMs(1500);
+  assert.deepEqual(sent, [[0x5a01, { preset: 'eco' }]]);
+  await release();
+  assert.deepEqual([device.getCapabilityValue('sg_heat_preset'), device.getCapabilityValue('target_temperature')], ['eco', 16]);
+});
+
+test('a preset and a set point count as one kind: the answer to a preset after a newer set point does not change what is shown, nor the set point\'s after a newer preset', async () => {
+  const { device, controller, sent, status, homey, release } = await thermostat();
+  // A set point chosen in Homey: the listener, then Homey shows it.
+  const setPoint = async (value) => {
+    await device.listened.target_temperature(value);
+    await device.setCapabilityValue('target_temperature', value);
+  };
+  status();
+  await device.listened.sg_heat_preset('eco');
+  await setPoint(25);
+  homey.runMs(1500);
+  assert.deepEqual(sent, [[0x5a01, { preset: 'eco' }], [0x5a01, { setPoint: 25 }]]);
+  await release();
+  assert.equal(device.getCapabilityValue('target_temperature'), 25, 'not eco\'s 16');
+  assert.ok(device.logs.includes('preset eco from Homey: acknowledged by the thermostat (0), after a newer change: only logged'), device.logs.join('\n'));
+  await release();
+  assert.deepEqual([device.getCapabilityValue('target_temperature'), device.getCapabilityValue('sg_heat_preset')], [25, null]);
+  controller.answer = (command) => (command.setPoint !== undefined
+    ? { acked: true, segments: 2, ack: null }
+    : { acked: true, segments: 2, ack: { values: [], refused: true, ms: 300 } });
+  await setPoint(23);
+  homey.runMs(1500);
+  await device.listened.sg_heat_preset('comfort');
+  assert.deepEqual(sent.slice(2), [[0x5a01, { setPoint: 23 }], [0x5a01, { preset: 'comfort' }]]);
+  await release();
+  assert.deepEqual([device.getCapabilityValue('target_temperature'), device.getCapabilityValue('sg_heat_preset')], [21, 'comfort'],
+    'the set point\'s missing answer does not undo the preset');
+  await release();
+  assert.deepEqual([device.getCapabilityValue('target_temperature'), device.getCapabilityValue('sg_heat_preset')], [25, null],
+    'comfort refused: what it last acknowledged');
 });
 
 test('the set point from Homey: stepped to 0.5, sent once it has rested 1.5 s, the last only; without an acknowledgement the one it last acknowledged or reported again', async () => {

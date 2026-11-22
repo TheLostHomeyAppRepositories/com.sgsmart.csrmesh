@@ -147,7 +147,30 @@ test('two homes with a network: the first is used, and the log says so', async (
   const app = await fetchedApp([home({ devices: [{ meshId: 0x8010, type: 101, name: null, certain: true }] }),
     home({ homeKey: OTHER_HOME_KEY }), home()]);
   assert.equal(app.account.sg3Network().homeKey, OTHER_HOME_KEY);
-  assert.ok(app.logs.some((line) => line.endsWith('2 home(s) with a 3.0 network, only the first is used, 3 home key(s)')), app.logs.join('\n'));
+  assert.ok(app.logs.some((line) => line.endsWith('2 home(s) with a 3.0 network, only one is used, 3 home key(s)')), app.logs.join('\n'));
+});
+
+const THIRD_HOME_KEY = '112233445566';
+// A 3.0 device in Homey, of the home with this key (in its id).
+const inHomey = (homeKey, address = 0x0003) => ({ getSg3Address: () => address, getSg3HomeKey: () => homeKey });
+
+test('the home of the 3.0 devices in Homey is used, else the first with a device that can carry the link; never one with HeatReg Smart 3.0 alone', async () => {
+  const thermostatOnly = home({ homeKey: THIRD_HOME_KEY, devices: [{ meshId: 0x0005, type: 3021, name: null, certain: true }] });
+  const app = await fetchedApp([thermostatOnly, home({ homeKey: OTHER_HOME_KEY }), home()]);
+  assert.equal(app.account.sg3Network().homeKey, OTHER_HOME_KEY, 'not the first, which has the thermostat alone');
+  assert.ok(app.logs.some((line) => line.endsWith('2 home(s) with a 3.0 network, only one is used, 3 home key(s)')), app.logs.join('\n'));
+  app._devices = () => [inHomey(HOME_KEY)];
+  assert.equal(app.account.sg3Network().homeKey, HOME_KEY, 'the home of the dimmer in Homey');
+  const ready = app.account.summary().homes.map((shown) => shown.sg3State);
+  assert.deepEqual(ready, ['later', 'later', 'ready'], 'the page says the same home');
+  app._devices = () => [inHomey(THIRD_HOME_KEY, 0x0005)];
+  assert.equal(app.account.sg3Network().homeKey, OTHER_HOME_KEY, 'a thermostat in Homey does not make its home the one');
+  app._devices = () => [{ getSg3Address: () => null, getSg3HomeKey: () => HOME_KEY }];
+  assert.equal(app.account.sg3Network().homeKey, OTHER_HOME_KEY, 'one being deleted does not count');
+  const alone = await fetchedApp([thermostatOnly]);
+  assert.equal(alone.account.sg3Network(), null);
+  alone._devices = () => [inHomey(THIRD_HOME_KEY, 0x0005)];
+  assert.equal(alone.account.sg3Network(), null, 'not even with the thermostat in Homey');
 });
 
 test('kept before the home\'s key: no network, and the log says to fetch again; "Forget SG account" leaves none', async () => {
