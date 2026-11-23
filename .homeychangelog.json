@@ -135,5 +135,9 @@
   "2.10.0": {
     "en": "HeatReg Smart: When the thermostat uses the floor sensor, Homey now shows the floor temperature instead of the room temperature. New \"Displayed temperature\" setting (Automatic, Floor sensor, Room sensor). Room temperature is shown as a separate measurement. Homey follows the sensor reported by the thermostat.",
     "no": "HeatReg Smart: Når termostaten bruker gulvføleren, viser Homey nå gulvtemperaturen i stedet for romtemperaturen. Ny innstilling \"Vist temperatur\" (Automatisk, Gulvføler, Romføler). Romtemperaturen vises som egen måling. Homey følger føleren termostaten selv melder."
+  },
+  "2.10.1": {
+    "en": "HeatReg Smart now shows the floor temperature when the thermostat uses the floor sensor, and has a new \"Displayed temperature\" setting. LEDDim Smart Push and TW LEDDim Smart Push can now be added, with on, off and dimming. HeatReg Smart 3.0 can now be added, with on, off, target temperature and preset. It needs a LEDDim Smart 3.0 in the same home. Being tested.",
+    "no": "HeatReg Smart viser nå gulvtemperaturen når termostaten bruker gulvføleren, og har ny innstilling \"Vist temperatur\". LEDDim Smart Push og TW LEDDim Smart Push kan nå legges til, med av, på og dimming. HeatReg Smart 3.0 kan nå legges til, med av, på, måltemperatur og forhåndsinnstilling. Den trenger en LEDDim Smart 3.0 i samme hjem. Under utprøving."
   }
 }

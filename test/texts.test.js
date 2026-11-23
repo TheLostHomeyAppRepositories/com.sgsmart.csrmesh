@@ -650,3 +650,20 @@ test('the texts of 2026-11-07, as Trond worded them: the settings page, the pair
     assert.ok(page.includes(`<p data-i18n="${key}">${get(en, key)}</p>`), key);
   }
 });
+
+test('the 2.10.1 changelog: Trond\'s text word for word, in Norwegian and English, the last entry; straight quotes, no dashes; '
+  + 'the version the same in the manifest and the package', () => {
+  const changelogs = JSON.parse(read('.homeychangelog.json'));
+  assert.deepEqual(Object.keys(changelogs).slice(-2), ['2.10.0', '2.10.1']);
+  assert.equal(changelogs['2.10.1'].no, 'HeatReg Smart viser nå gulvtemperaturen når termostaten bruker gulvføleren, og har ny innstilling '
+    + '"Vist temperatur". LEDDim Smart Push og TW LEDDim Smart Push kan nå legges til, med av, på og dimming. HeatReg Smart 3.0 kan nå '
+    + 'legges til, med av, på, måltemperatur og forhåndsinnstilling. Den trenger en LEDDim Smart 3.0 i samme hjem. Under utprøving.');
+  assert.equal(changelogs['2.10.1'].en, 'HeatReg Smart now shows the floor temperature when the thermostat uses the floor sensor, and has '
+    + 'a new "Displayed temperature" setting. LEDDim Smart Push and TW LEDDim Smart Push can now be added, with on, off and dimming. '
+    + 'HeatReg Smart 3.0 can now be added, with on, off, target temperature and preset. It needs a LEDDim Smart 3.0 in the same home. '
+    + 'Being tested.');
+  for (const text of Object.values(changelogs['2.10.1'])) assert.doesNotMatch(text, /[“”‘’«»…–—]/);
+  const lock = JSON.parse(read('package-lock.json'));
+  assert.deepEqual([read('app.json'), read('.homeycompose/app.json'), read('package.json')].map((file) => JSON.parse(file).version)
+    .concat([lock.version, lock.packages[''].version]), ['2.10.1', '2.10.1', '2.10.1', '2.10.1', '2.10.1']);
+});
